@@ -1,30 +1,90 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
+		<title>Belote ou Secte ?</title>
 	</head>
 	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+		<form id="joiner">
+			<label for="username">Adepte:</label>
+			<input type="text" name="username" placeholder="Ton ostie de pseudo" id="username" required />
+			<button id="join" type="submit">Je rejoins la secte</button>
+		</form>
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
+		<button id="generate_tables">Repartir les jours sur les tables</button>
+
+		<br />
+		<ul id="users"></ul>
+		<ul id="tables"></ul>
+		<script>
+			refreshUsers = () =>
+				fetch('/users')
 					.then((resp) => resp.text())
 					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
+						const ul = document.getElementById('users');
+						const users = JSON.parse(text);
+						console.log('Users:', users);
+						users.forEach((user) => {
+							let li = document.createElement('li');
+							li.innerText = user.name + (user.table ? ' (Table: ' + user.table + ')' : '');
+							ul.appendChild(li);
+						});
+					});
+			refreshUsers();
+
+			refreshTables = () =>
+				fetch('/tables')
+					.then((resp) => resp.text())
+					.then((text) => {
+						const ul = document.getElementById('tables');
+						const tables = JSON.parse(text);
+						console.log('Tables:', tables);
+						for (const [table, users] of Object.entries(tables)) {
+							let li = document.createElement('li');
+							li.innerText = table + ': ' + users.map((user) => user.name).join(', ');
+							ul.appendChild(li);
+						}
+					});
+			refreshTables();
+
+			generateTables = () =>
+				fetch('/generate_tables', {
+					method: 'POST',
+				})
+					.then((resp) => resp.text())
+					.then((text) => {
+						refreshTables();
+					});
+
+			const generateTablesButton = document.getElementById('generate_tables');
+			generateTablesButton.addEventListener('click', function (event) {
+				event.preventDefault();
+				generateTables();
+			});
+
+			const joinerForm = document.getElementById('joiner');
+			joinerForm.addEventListener('submit', function (event) {
+				event.preventDefault();
+
+				const elem = document.getElementById('username');
+				const jsonBody = JSON.stringify({ username: elem.value });
+
+				fetch('/join', {
+					method: 'POST',
+					body: jsonBody,
+					headers: {
+						'Content-Type': 'application/json',
+						// 'Content-Type': 'multipart/form-data',
+					},
+				})
+					.then((resp) => resp.text())
+					.then((text) => {
+						const elem = document.getElementById('username');
+						elem.textContent = text;
+
+						refreshUsers();
+						refreshUsersByTable();
 					});
 			});
 		</script>
