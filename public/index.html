@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Meltdown</title>
+		<title>Meltdown Belote</title>
 	</head>
 	<body>
 		<form id="join">
@@ -16,10 +16,13 @@
 
 		<ul id="tables"></ul>
 		<div id="messages">disconnected</div>
+		<a href="/help">Aide et valeur des cartes</a>
+		<br />
+		<a href="/backend">Backend</a>
 		<script>
 			// @ts-check
 			const connectWebsocket = (username) => {
-				let hostname = window.location.host;
+				const hostname = window.location.host;
 				const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
 				let ws = new WebSocket(scheme + hostname + '/me/meltdown?username=' + encodeURIComponent(username));
 				const messagesDiv = document.getElementById('messages');
@@ -73,17 +76,29 @@
 						console.log('Tables:', tables);
 
 						for (const [table, users] of Object.entries(tables)) {
-							let liTable = document.createElement('li');
-							let ulUsers = document.createElement('ul');
+							const liTable = document.createElement('li');
+							liTable.innerText = table + ' (' + users.length + ' players)';
+							if (users.length == 5) {
+								liTable.innerText += ' : apprenez le Tarot a 5 :p';
+							}
+							const ulUsers = document.createElement('ul');
 							for (const [username, user] of Object.entries(users)) {
-								let liUser = document.createElement('li');
-								liUser.innerText = user.name;
+								const liUser = document.createElement('li');
+								if (user.ready) {
+									liUser.innerText = user.name + ' (ready)';
+									liUser.setAttribute('style', 'color: #006400');
+								} else {
+									liUser.innerText = user.name + ' (not ready)';
+									liUser.setAttribute('style', 'color: #FF8C00');
+								}
+								if (!user.ip) {
+									liUser.innerText += ' added by admin';
+								}
 								if (user.name == localUsername) {
 									found = true;
 								}
 								ulUsers.appendChild(liUser);
 							}
-							liTable.innerText = table + ' (' + users.length + ' players)';
 							liTable.appendChild(ulUsers);
 							ulTables.appendChild(liTable);
 						}
@@ -116,15 +131,6 @@
 				}
 				connectedDiv.innerHTML = '';
 
-				const finishedButton = document.createElement('button');
-				finishedButton.innerHTML = 'Game finished (return to Panama)!';
-				finishedButton.addEventListener('click', function (event) {
-					fetch('/me/finish?username=' + encodeURIComponent(username)).then(() => {
-						console.log('User finished:', username);
-						refreshTables();
-					});
-				});
-
 				const quitButton = document.createElement('button');
 				quitButton.innerHTML = 'Quit Meltdown (' + username + ')';
 				quitButton.addEventListener('click', function (event) {
@@ -136,10 +142,29 @@
 						refreshTables();
 					});
 				});
-
 				connectedDiv.appendChild(quitButton);
 				connectedDiv.appendChild(document.createElement('br'));
+
+				const finishedButton = document.createElement('button');
+				finishedButton.innerHTML = 'Game finished (return to Panama)!';
+				finishedButton.addEventListener('click', function (event) {
+					fetch('/me/finish?username=' + encodeURIComponent(username)).then(() => {
+						console.log('User finished:', username);
+						refreshTables();
+					});
+				});
 				connectedDiv.appendChild(finishedButton);
+				connectedDiv.appendChild(document.createElement('br'));
+
+				const readyButton = document.createElement('button');
+				readyButton.innerHTML = 'Ready to play!';
+				readyButton.addEventListener('click', function (event) {
+					fetch('/me/ready?username=' + encodeURIComponent(username)).then(() => {
+						console.log('User ready:', username);
+						refreshTables();
+					});
+				});
+				connectedDiv.appendChild(readyButton);
 			};
 
 			(function () {

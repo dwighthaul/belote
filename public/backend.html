@@ -3,11 +3,14 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Belote backend</title>
+		<title>Meltdown backend</title>
 	</head>
 	<body>
-		<a href="/">Frontend</a>
-		<br /><br />
+		<form id="join">
+			<label for="username">Adepte:</label>
+			<input type="text" name="username" placeholder="Ton ostie de pseudo" id="username" required />
+			<button id="join_button" type="submit">Join</button>
+		</form>
 		<button id="load_fixtures" type="button">Load users</button>
 		<br /><br />
 		<button id="clear_tables" type="button">Clear Tables</button>
@@ -20,108 +23,179 @@
 		<br /><br />
 		<ul id="tables"></ul>
 		<div id="messages">disconnected</div>
+		<a href="/">Frontend</a>
+		<br />
+		<a href="/help">Aide</a>
 		<script>
 			// @ts-check
-			const connectWebsocket = () => {
-				let hostname = window.location.host;
-				const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
-				let ws = new WebSocket(scheme + hostname + '/admin/meltdown');
+			(function () {
 				const messagesDiv = document.getElementById('messages');
 				if (!messagesDiv) {
 					console.log('messages element not found');
 					return;
 				}
 
-				ws.onopen = () => {
-					const msg = 'Connected to Meltdown, tables updated';
-					messagesDiv.innerHTML = msg;
-					console.log(msg);
-					refreshTables();
-				};
+				const connectWebsocket = () => {
+					const hostname = window.location.host;
+					const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
+					let ws = new WebSocket(scheme + hostname + '/admin/meltdown');
 
-				ws.onmessage = (event) => {
-					const msg = `Update tables because : ${event.data}`;
-					console.log(msg);
-					messagesDiv.innerHTML = msg;
-					refreshTables();
-				};
+					ws.onopen = () => {
+						const msg = 'Connected to Meltdown, tables updated';
+						messagesDiv.innerHTML = msg;
+						console.log(msg);
+						refreshTables();
+					};
 
-				ws.onclose = () => {
-					const msg = 'Disconnected from Meltdown!';
-					console.log(msg);
-					messagesDiv.innerHTML = msg;
-					const ulTables = document.getElementById('tables');
-					if (!ulTables) {
-						console.log('tables element not found');
-						return;
-					}
-					ulTables.innerHTML = '';
-				};
-			};
+					ws.onmessage = (event) => {
+						const msg = `Update tables because : ${event.data}`;
+						console.log(msg);
+						messagesDiv.innerHTML = msg;
+						refreshTables();
+					};
 
-			const refreshTables = () =>
-				fetch('/public/tables')
-					.then((resp) => resp.text())
-					.then((text) => {
+					ws.onclose = () => {
+						const msg = 'Disconnected from Meltdown!';
+						console.log(msg);
+						messagesDiv.innerHTML = msg;
 						const ulTables = document.getElementById('tables');
 						if (!ulTables) {
 							console.log('tables element not found');
 							return;
 						}
 						ulTables.innerHTML = '';
+					};
+				};
 
-						const tables = JSON.parse(text);
-						console.log('Tables:', tables);
-						for (const [table, users] of Object.entries(tables)) {
-							let liTable = document.createElement('li');
-							let ulUsers = document.createElement('ul');
-							console.log('Table:', table);
-
-							let sortedUsers = users.sort((a, b) => {
-								return a.name < b.name;
-							});
-
-							for (const user of sortedUsers) {
-								console.log('User:', user);
-								let liUser = document.createElement('li');
-								let deleteButton = document.createElement('button');
-								deleteButton.innerText = 'Delete';
-								deleteButton.addEventListener('click', function (event) {
-									fetch('/admin/users/delete?username=' + encodeURIComponent(user.name)).then(() => {
-										console.log('Delete user:', user.name);
-										// refreshTables();
-									});
-								});
-								liUser.appendChild(deleteButton);
-
-								let finishButton = document.createElement('button');
-								finishButton.innerText = 'Finish';
-								finishButton.addEventListener('click', function (event) {
-									fetch('/admin/users/finish?username=' + encodeURIComponent(user.name)).then(() => {
-										console.log('Finished user:', user.name);
-										// refreshTables();
-									});
-								});
-								liUser.appendChild(finishButton);
-
-								let spanInfo = document.createElement('span');
-								spanInfo.innerText =
-									` ${user.name}` +
-									` [IP: ${user.ip}]` +
-									` [Joined: ${new Date(user.joinedAt).toLocaleString()}]` +
-									` [Activity: ${new Date(user.lastActiveAt).toLocaleString()}]`;
-								liUser.appendChild(spanInfo);
-
-								ulUsers.appendChild(liUser);
+				const refreshTables = () =>
+					fetch('/public/tables')
+						.then((resp) => resp.text())
+						.then((text) => {
+							const ulTables = document.getElementById('tables');
+							if (!ulTables) {
+								console.log('tables element not found');
+								return;
 							}
-							liTable.innerText = table + ' (' + users.length + ' players)';
-							liTable.appendChild(ulUsers);
-							ulTables.appendChild(liTable);
-						}
-					});
+							ulTables.innerHTML = '';
 
-			(function () {
+							const tables = JSON.parse(text);
+							console.log('Tables:', tables);
+							for (const [table, users] of Object.entries(tables)) {
+								const liTable = document.createElement('li');
+								const ulUsers = document.createElement('ul');
+								console.log('Table:', table);
+
+								for (const user of users) {
+									console.log('User:', user);
+									const liUser = document.createElement('li');
+									const deleteButton = document.createElement('button');
+									deleteButton.innerText = 'Delete';
+									deleteButton.addEventListener('click', function (event) {
+										fetch('/admin/users/delete?username=' + encodeURIComponent(user.name))
+											.then(() => {
+												console.log('Delete user:', user.name);
+												refreshTables();
+											})
+											.catch((error) => {
+												const msg = 'Fetch error:' + error;
+												messagesDiv.innerHTML = msg;
+												console.error(msg);
+											});
+									});
+									liUser.appendChild(deleteButton);
+
+									const finishButton = document.createElement('button');
+									finishButton.innerText = 'Finish';
+									finishButton.addEventListener('click', function (event) {
+										fetch('/admin/users/finish?username=' + encodeURIComponent(user.name))
+											.then(() => {
+												console.log('Finished user:', user.name);
+												refreshTables();
+											})
+											.catch((error) => {
+												const msg = 'Fetch error:' + error;
+												messagesDiv.innerHTML = msg;
+												console.error(msg);
+											});
+									});
+									liUser.appendChild(finishButton);
+
+									const readyButton = document.createElement('button');
+									readyButton.innerText = 'Ready';
+									readyButton.addEventListener('click', function (event) {
+										fetch('/admin/users/ready?username=' + encodeURIComponent(user.name))
+											.then(() => {
+												console.log('Ready user:', user.name);
+												refreshTables();
+											})
+											.catch((error) => {
+												const msg = 'Fetch error:' + error;
+												messagesDiv.innerHTML = msg;
+												console.error(msg);
+											});
+									});
+									liUser.appendChild(readyButton);
+
+									const spanInfo = document.createElement('span');
+									spanInfo.innerText =
+										` ${user.name}` +
+										` [IP: ${user.ip}]` +
+										` [Joined: ${new Date(user.joinedAt).toLocaleString()}]` +
+										` [Activity: ${new Date(user.lastActiveAt).toLocaleString()}]`;
+									if (user.ready) {
+										spanInfo.setAttribute('style', 'color: #006400');
+									} else {
+										spanInfo.setAttribute('style', 'color: #FF8C00');
+									}
+									liUser.appendChild(spanInfo);
+
+									ulUsers.appendChild(liUser);
+								}
+								liTable.innerText = table + ' (' + users.length + ' players)';
+
+								const tableReadyButton = document.createElement('button');
+								tableReadyButton.innerText = 'Ready';
+								tableReadyButton.addEventListener('click', function (event) {
+									fetch('/admin/tables/ready?table=' + encodeURIComponent(table))
+										.then(() => {
+											console.log('Table ready:', table);
+											refreshTables();
+										})
+										.catch((error) => {
+											const msg = 'Fetch error:' + error;
+											messagesDiv.innerHTML = msg;
+											console.error(msg);
+										});
+								});
+								liTable.appendChild(tableReadyButton);
+								liTable.appendChild(ulUsers);
+								ulTables.appendChild(liTable);
+							}
+						});
+
 				connectWebsocket();
+
+				const joinForm = document.getElementById('join');
+				if (!joinForm) {
+					console.log('join element not found');
+					return;
+				}
+				joinForm.addEventListener('submit', function (event) {
+					event.preventDefault();
+					const usernameElem = document.getElementById('username');
+					if (!usernameElem) {
+						console.log('username element not found');
+						return;
+					}
+					const usernameInput = /** @type {HTMLInputElement} */ (usernameElem);
+					const username = usernameInput.value;
+
+					fetch('/admin/users/join?username=' + encodeURIComponent(username))
+						.then((resp) => resp.text())
+						.then((text) => {
+							refreshTables();
+						});
+				});
 
 				const loadFixturesButton = document.getElementById('load_fixtures');
 				if (!loadFixturesButton) {
@@ -134,6 +208,11 @@
 						.then((text) => {
 							console.log(text);
 							refreshTables();
+						})
+						.catch((error) => {
+							const msg = 'Fetch error:' + error;
+							messagesDiv.innerHTML = msg;
+							console.error(msg);
 						});
 				});
 
@@ -147,6 +226,11 @@
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
+						})
+						.catch((error) => {
+							const msg = 'Fetch error:' + error;
+							messagesDiv.innerHTML = msg;
+							console.error(msg);
 						});
 				});
 
@@ -160,6 +244,11 @@
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
+						})
+						.catch((error) => {
+							const msg = 'Fetch error:' + error;
+							messagesDiv.innerHTML = msg;
+							console.error(msg);
 						});
 				});
 
@@ -173,6 +262,11 @@
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
+						})
+						.catch((error) => {
+							const msg = 'Fetch error:' + error;
+							messagesDiv.innerHTML = msg;
+							console.error(msg);
 						});
 				});
 
@@ -186,6 +280,11 @@
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
+						})
+						.catch((error) => {
+							const msg = 'Fetch error:' + error;
+							messagesDiv.innerHTML = msg;
+							console.error(msg);
 						});
 				});
 			})();
