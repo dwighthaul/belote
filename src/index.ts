@@ -24,7 +24,18 @@ export interface Env {
 const BASIC_USER = 'admin';
 const BASIC_PASS = 'password';
 const IP_HEADER = 'CF-Connecting-IP';
+const DEFAULT_TABLE = 'panama';
 type Tables = Map<string, Map<string, User>>;
+
+class UserAndTable {
+	user: User;
+	table: string;
+
+	constructor(table: string, user: User) {
+		this.table = table;
+		this.user = user;
+	}
+}
 
 export class MyDurableObject extends DurableObject<Env> {
 	tables!: Tables;
@@ -50,10 +61,11 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 		});
 	}
-	async finish(username: string, ip?: string): Promise<boolean> {
+	async finish(username: string, ip?: string): Promise<number> {
 		this.tables = (await this.ctx.storage.get('tables')) || new Map();
-		let found = false;
-		let oldTableName: string = '';
+		let panamaTable = this.tables.get(DEFAULT_TABLE) || new Map();
+
+		let foundUserTable: UserAndTable | undefined;
 		this.tables.forEach((table, tableName) => {
 			let user = table.get(username);
 			if (user === undefined) {
@@ -62,37 +74,32 @@ export class MyDurableObject extends DurableObject<Env> {
 			if (ip !== undefined && ip != user.ip) {
 				return;
 			}
+			console.log(`user ${user.name} found on table ${tableName}`);
+			foundUserTable = new UserAndTable(tableName, user);
 
-			found = true;
-			if (tableName != 'panama') {
-				oldTableName = tableName;
+			if (tableName != DEFAULT_TABLE) {
+				table.delete(username);
+				panamaTable.set(username, user);
 			}
-			table.delete(username);
-			let panamaTable = this.tables.get('panama') || new Map();
-			panamaTable.set(username, user);
 		});
 
-		if (!found) {
-			return false;
+		if (!foundUserTable) {
+			return 404;
+		}
+		if (foundUserTable.table == DEFAULT_TABLE) {
+			return 304;
 		}
 
-		if (oldTableName.length === 0) {
-			await this.ctx.storage.put('tables', this.tables);
-		} else {
-			let oldTable = this.tables.get(oldTableName);
-			if (oldTable === undefined) {
-				await this.ctx.storage.put('tables', this.tables);
-			} else {
-				let panamaTable = this.tables.get('panama') || new Map();
-				for (let user of oldTable.values()) {
-					panamaTable.set(user.name, user);
-				}
-				this.tables.set('panama', panamaTable);
-				this.tables.delete(oldTableName);
-				await this.ctx.storage.put('tables', this.tables);
+		let oldTable = this.tables.get(foundUserTable.table);
+		if (oldTable) {
+			for (let user of oldTable.values()) {
+				panamaTable.set(user.name, user);
 			}
+			this.tables.set(DEFAULT_TABLE, panamaTable);
+			this.tables.delete(foundUserTable.table);
 		}
-		return true;
+		await this.ctx.storage.put('tables', this.tables);
+		return 200;
 	}
 	async quit(username: string, ip?: string): Promise<boolean> {
 		this.tables = (await this.ctx.storage.get('tables')) || new Map();
@@ -108,7 +115,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 
 			found = true;
-			if (tableName != 'panama') {
+			if (tableName != DEFAULT_TABLE) {
 				oldTableName = tableName;
 			}
 			table.delete(username);
@@ -125,19 +132,19 @@ export class MyDurableObject extends DurableObject<Env> {
 			if (oldTable === undefined) {
 				await this.ctx.storage.put('tables', this.tables);
 			} else {
-				let panamaTable = this.tables.get('panama') || new Map();
+				let panamaTable = this.tables.get(DEFAULT_TABLE) || new Map();
 				for (let user of oldTable.values()) {
 					panamaTable.set(user.name, user);
 				}
 
-				this.tables.set('panama', panamaTable);
+				this.tables.set(DEFAULT_TABLE, panamaTable);
 				this.tables.delete(oldTableName);
 				await this.ctx.storage.put('tables', this.tables);
 			}
 		}
 		return true;
 	}
-	async join(username: string, ip: string): Promise<void> {
+	async join(username: string, ip: string): Promise<boolean> {
 		this.tables = (await this.ctx.storage.get('tables')) || new Map();
 
 		let existed = false;
@@ -154,10 +161,10 @@ export class MyDurableObject extends DurableObject<Env> {
 
 		if (!existed) {
 			const user = new User(username, ip);
-			let table = this.tables.get('panama');
+			let table = this.tables.get(DEFAULT_TABLE);
 			if (table === undefined) {
 				table = new Map<string, User>();
-				this.tables.set('panama', table);
+				this.tables.set(DEFAULT_TABLE, table);
 			}
 			table.set(username, user);
 			console.log(`User ${username} joined with IP ${ip}`);
@@ -165,6 +172,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			console.log(`User ${username} already exists, updated last active time and IP`);
 		}
 		await this.ctx.storage.put('tables', this.tables);
+		return !existed;
 	}
 	private async assignTable(tableName: string, users: User[]): Promise<void> {
 		this.tables = (await this.ctx.storage.get('tables')) || new Map();
@@ -228,15 +236,15 @@ export class MyDurableObject extends DurableObject<Env> {
 				break;
 			} else if (users.length == 3) {
 				let tableDe3 = users.splice(0, 3);
-				await this.assignTable('panama', tableDe3);
+				await this.assignTable(DEFAULT_TABLE, tableDe3);
 				break;
 			} else if (users.length == 2) {
 				let tableDe2 = users.splice(0, 2);
-				await this.assignTable('panama', tableDe2);
+				await this.assignTable(DEFAULT_TABLE, tableDe2);
 				break;
 			} else if (users.length == 1) {
 				let tableDe1 = users.splice(0, 1);
-				await this.assignTable('panama', tableDe1);
+				await this.assignTable(DEFAULT_TABLE, tableDe1);
 				break;
 			}
 			let tableDe4 = users.splice(0, 4);
@@ -275,12 +283,20 @@ export default {
 			status: 200,
 			headers: { 'Content-Type': 'application/json;charset=utf-8', 'Cache-Control': 'no-store' },
 		};
+		const internalError = new Response(`internal error`, { status: 500 });
 		const stub = env.MY_DURABLE_OBJECT.getByName('belote');
 		if (!stub) {
 			return new Response('Durable Object not found', { status: 500 });
 		}
 		switch (url.pathname) {
-			case '/users/join':
+			// global and unauthenticated
+			case '/public/tables': {
+				const tables = await stub.getTables();
+				return new Response(tables, success);
+			}
+
+			// for users
+			case '/me/join':
 				const username = url.searchParams.get('username');
 				if (!username) {
 					return new Response('Missing username', { status: 400 });
@@ -289,11 +305,7 @@ export default {
 				await stub.join(username, ip);
 				await stub.notifyAll(`user ${username} joined the Meltdown`);
 				return new Response('🎉 User joined!', success);
-			case '/tables': {
-				const tables = await stub.getTables();
-				return new Response(tables, success);
-			}
-			case '/meltdown': {
+			case '/me/meltdown': {
 				const username = url.searchParams.get('username');
 				if (!username) {
 					return new Response('Missing username', { status: 400 });
@@ -308,9 +320,9 @@ export default {
 					return new Response('Missing username', { status: 400 });
 				}
 				const ip = request.headers.get(IP_HEADER) || 'unknown';
-				const moved = await stub.quit(username, ip);
-				if (moved) {
-					await stub.notifyAll(`user ${username} joined the Meltdown`);
+				const quit = await stub.quit(username, ip);
+				if (quit) {
+					await stub.notifyAll(`user ${username} quit the Meltdown`);
 					return new Response(`🎉 User ${username} left!`, success);
 				} else {
 					return new Response(`User ${username} not found or not authorized`, { status: 404 });
@@ -322,23 +334,28 @@ export default {
 					return new Response('Missing username', { status: 400 });
 				}
 				const ip = request.headers.get(IP_HEADER) || 'unknown';
-				const moved = await stub.finish(username, ip);
-				if (moved) {
-					await stub.notifyAll(`user ${username} and its friends at the same table finished their game`);
-					return new Response(`🎉 User ${username} moved!`, success);
-				} else {
-					return new Response(`User ${username} not found or not authorized`, { status: 404 });
+				const code = await stub.finish(username, ip);
+				switch (code) {
+					case 404:
+						return new Response(`User ${username} not found or not authorized`, { status: 404 });
+					case 304:
+						return new Response(null, { status: 304 });
+					case 200:
+						await stub.notifyAll(`user ${username} and its friends at the same table finished their game`);
+						return new Response(`🎉 User ${username} moved!`, success);
+					default:
+						return internalError;
 				}
 			}
 
 			// NEEDS AUTH
-			case '/users/notify': {
+			case '/admin/notify': {
 				return authenticate(request, env, async () => {
 					await stub.notifyAll('force notify all');
 					return new Response(`🎉 Users notified!`, success);
 				});
 			}
-			case '/users/delete': {
+			case '/admin/users/delete': {
 				return authenticate(request, env, async () => {
 					const username = url.searchParams.get('username');
 					if (!username) {
@@ -353,7 +370,27 @@ export default {
 					}
 				});
 			}
-			case '/users/load_fixtures': {
+			case '/admin/users/finish': {
+				return authenticate(request, env, async () => {
+					const username = url.searchParams.get('username');
+					if (!username) {
+						return new Response('Missing username', { status: 400 });
+					}
+					const code = await stub.finish(username, undefined);
+					switch (code) {
+						case 404:
+							return new Response(`User ${username} not found`, { status: 404 });
+						case 304:
+							return new Response(null, { status: 304 });
+						case 200:
+							await stub.notifyAll(`user ${username} finished its game`);
+							return new Response(`🎉 User ${username} finished its game!`, success);
+						default:
+							return internalError;
+					}
+				});
+			}
+			case '/admin/users/fixtures': {
 				return authenticate(request, env, async () => {
 					const ip = request.headers.get(IP_HEADER) || 'unknown';
 					const fixtureUsers = ['alice', 'bob', 'carol', 'dave', 'eve', 'frank', 'grace', 'heidi', 'ivan', 'judy', 'seb'];
@@ -364,7 +401,7 @@ export default {
 					return new Response('🎉 Fixture users loaded!', success);
 				});
 			}
-			case '/tables/clear': {
+			case '/admin/tables/clear': {
 				return authenticate(request, env, async () => {
 					if (await stub.deleteTables()) {
 						await stub.notifyAll(`tables cleared`);
@@ -372,7 +409,7 @@ export default {
 					return new Response('🎉 Tables cleared', success);
 				});
 			}
-			case '/tables/generate': {
+			case '/admin/tables/generate': {
 				return authenticate(request, env, async () => {
 					if (await stub.generateTables()) {
 						await stub.notifyAll(`tables generated`);

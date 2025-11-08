@@ -4,13 +4,13 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-alpha1/dist/htmx.min.js"></script>
-		<title>Belote ou Secte ?</title>
+		<title>Meltdown</title>
 	</head>
 	<body>
 		<form id="join">
 			<label for="username">Adepte:</label>
 			<input type="text" name="username" placeholder="Ton ostie de pseudo" id="username" required />
-			<button type="submit">Je rejoins la secte</button>
+			<button id="join_button" type="submit">Je rejoins la secte</button>
 		</form>
 		<div id="connected"></div>
 		<br />
@@ -22,7 +22,7 @@
 			const connectWebsocket = (username) => {
 				let hostname = window.location.host;
 				const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
-				let ws = new WebSocket(scheme + hostname + '/meltdown?username=' + encodeURIComponent(username));
+				let ws = new WebSocket(scheme + hostname + '/me/meltdown?username=' + encodeURIComponent(username));
 				const messagesDiv = document.getElementById('messages');
 				if (!messagesDiv) {
 					console.log('messages element not found');
@@ -57,9 +57,12 @@
 			};
 
 			const refreshTables = () =>
-				fetch('/tables')
+				fetch('/public/tables')
 					.then((resp) => resp.text())
 					.then((text) => {
+						const username = localStorage.getItem('username');
+						let found = false;
+
 						const ulTables = document.getElementById('tables');
 						if (!ulTables) {
 							console.log('tables element not found');
@@ -76,6 +79,9 @@
 							for (const [username, user] of Object.entries(users)) {
 								let liUser = document.createElement('li');
 								liUser.innerText = user.name;
+								if (user.name == username) {
+									found = true;
+								}
 								ulUsers.appendChild(liUser);
 							}
 							liTable.innerText = table;
@@ -85,6 +91,14 @@
 					});
 
 			const connectedUser = (username) => {
+				const joinButton = document.getElementById('join_button');
+				if (!joinButton) {
+					console.log('join_button button not found');
+					return;
+				}
+				const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
+				joinButtonInput.disabled = true;
+
 				const connectedDiv = document.getElementById('connected');
 				if (!connectedDiv) {
 					console.log('connected element not found');
@@ -108,11 +122,13 @@
 						console.log('User left:', username);
 						localStorage.removeItem('username');
 						connectedDiv.innerHTML = '';
+						joinButtonInput.disabled = false;
 						// refreshTables();
 					});
 				});
 
 				connectedDiv.appendChild(quitButton);
+				connectedDiv.appendChild(document.createElement('br'));
 				connectedDiv.appendChild(finishedButton);
 			};
 
@@ -138,7 +154,6 @@
 				}
 				joinForm.addEventListener('submit', function (event) {
 					event.preventDefault();
-
 					const usernameElem = document.getElementById('username');
 					if (!usernameElem) {
 						console.log('username element not found');
@@ -147,7 +162,7 @@
 					const usernameInput = /** @type {HTMLInputElement} */ (usernameElem);
 					const username = usernameInput.value;
 
-					fetch('/users/join?username=' + encodeURIComponent(username))
+					fetch('/me/join?username=' + encodeURIComponent(username))
 						.then((resp) => resp.text())
 						.then((text) => {
 							localStorage.setItem('username', username);

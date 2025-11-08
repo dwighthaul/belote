@@ -23,10 +23,10 @@
 		<div id="messages">disconnected</div>
 		<script>
 			// @ts-check
-			const connectWebsocket = (username) => {
+			const connectWebsocket = () => {
 				let hostname = window.location.host;
 				const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
-				let ws = new WebSocket(scheme + hostname + '/meltdown?username=' + encodeURIComponent(username));
+				let ws = new WebSocket(scheme + hostname + '/admin/meltdown');
 				const messagesDiv = document.getElementById('messages');
 				if (!messagesDiv) {
 					console.log('messages element not found');
@@ -61,7 +61,7 @@
 			};
 
 			const refreshTables = () =>
-				fetch('/tables')
+				fetch('/public/tables')
 					.then((resp) => resp.text())
 					.then((text) => {
 						const ulTables = document.getElementById('tables');
@@ -78,24 +78,41 @@
 							let ulUsers = document.createElement('ul');
 							console.log('Table:', table);
 
-							for (const user of users) {
+							let sortedUsers = users.sort((a, b) => {
+								return a.name < b.name;
+							});
+
+							for (const user of sortedUsers) {
 								console.log('User:', user);
 								let liUser = document.createElement('li');
-								let removeButton = document.createElement('button');
-								removeButton.innerText =
-									`${user.name}` +
+								let deleteButton = document.createElement('button');
+								deleteButton.innerText = 'Delete';
+								deleteButton.addEventListener('click', function (event) {
+									fetch('/admin/users/delete?username=' + encodeURIComponent(user.name)).then(() => {
+										console.log('Delete user:', user.name);
+										// refreshTables();
+									});
+								});
+								liUser.appendChild(deleteButton);
+
+								let finishButton = document.createElement('button');
+								finishButton.innerText = 'Finish';
+								finishButton.addEventListener('click', function (event) {
+									fetch('/admin/users/finish?username=' + encodeURIComponent(user.name)).then(() => {
+										console.log('Finished user:', user.name);
+										// refreshTables();
+									});
+								});
+								liUser.appendChild(finishButton);
+
+								let spanInfo = document.createElement('span');
+								spanInfo.innerText =
+									` ${user.name}` +
 									` [IP: ${user.ip}]` +
 									` [Joined: ${new Date(user.joinedAt).toLocaleString()}]` +
 									` [Activity: ${new Date(user.lastActiveAt).toLocaleString()}]`;
+								liUser.appendChild(spanInfo);
 
-								removeButton.addEventListener('click', function (event) {
-									fetch('/users/delete?username=' + encodeURIComponent(user.name)).then(() => {
-										console.log('Removed user:', user.name);
-										refreshTables();
-									});
-								});
-								liUser.appendChild(removeButton);
-								liUser.appendChild(document.createElement('br'));
 								ulUsers.appendChild(liUser);
 							}
 							liTable.innerText = table + ' (' + users.length + ' players)';
@@ -113,7 +130,7 @@
 					return;
 				}
 				loadFixturesButton.addEventListener('click', function (event) {
-					fetch('/users/load_fixtures')
+					fetch('/admin/users/fixtures')
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
@@ -127,11 +144,10 @@
 					return;
 				}
 				clearTablesButton.addEventListener('click', function (event) {
-					fetch('/tables/clear')
+					fetch('/admin/tables/clear')
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
-							refreshTables();
 						});
 				});
 
@@ -141,11 +157,10 @@
 					return;
 				}
 				generateTablesButton.addEventListener('click', function (event) {
-					fetch('/tables/generate')
+					fetch('/admin/tables/generate')
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
-							refreshTables();
 						});
 				});
 
@@ -159,7 +174,6 @@
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
-							refreshTables();
 						});
 				});
 
@@ -169,7 +183,7 @@
 					return;
 				}
 				notifyAllButton.addEventListener('click', function (event) {
-					fetch('/users/notify')
+					fetch('/admin/users/notify')
 						.then((resp) => resp.text())
 						.then((text) => {
 							console.log(text);
