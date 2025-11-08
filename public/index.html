@@ -3,7 +3,6 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-alpha1/dist/htmx.min.js"></script>
 		<title>Meltdown</title>
 	</head>
 	<body>
@@ -60,7 +59,7 @@
 				fetch('/public/tables')
 					.then((resp) => resp.text())
 					.then((text) => {
-						const username = localStorage.getItem('username');
+						const localUsername = localStorage.getItem('username');
 						let found = false;
 
 						const ulTables = document.getElementById('tables');
@@ -79,14 +78,25 @@
 							for (const [username, user] of Object.entries(users)) {
 								let liUser = document.createElement('li');
 								liUser.innerText = user.name;
-								if (user.name == username) {
+								if (user.name == localUsername) {
 									found = true;
 								}
 								ulUsers.appendChild(liUser);
 							}
-							liTable.innerText = table;
+							liTable.innerText = table + ' (' + users.length + ' players)';
 							liTable.appendChild(ulUsers);
 							ulTables.appendChild(liTable);
+						}
+
+						if (!found) {
+							const joinButton = document.getElementById('join_button');
+							if (!joinButton) {
+								console.log('join_button button not found');
+								return;
+							}
+							const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
+							joinButtonInput.disabled = false;
+							localStorage.removeItem('username');
 						}
 					});
 
@@ -111,7 +121,7 @@
 				finishedButton.addEventListener('click', function (event) {
 					fetch('/me/finish?username=' + encodeURIComponent(username)).then(() => {
 						console.log('User finished:', username);
-						// refreshTables();
+						refreshTables();
 					});
 				});
 
@@ -123,7 +133,7 @@
 						localStorage.removeItem('username');
 						connectedDiv.innerHTML = '';
 						joinButtonInput.disabled = false;
-						// refreshTables();
+						refreshTables();
 					});
 				});
 
@@ -167,7 +177,7 @@
 						.then((text) => {
 							localStorage.setItem('username', username);
 							connectedUser(username);
-							// refreshTables();
+							refreshTables();
 						});
 				});
 			})();
