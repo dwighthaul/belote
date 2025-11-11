@@ -187,7 +187,8 @@ export default {
 			}
 			case '/admin/users/fixtures': {
 				return authenticate(request, env, async () => {
-					for (let username of JSON.parse(env.PLAYERS)) {
+					const players = JSON.parse(env.PLAYERS);
+					for (let username of players.usernames) {
 						await stub.join(username, undefined);
 					}
 					await stub.notifyAll('fixtures loaded');

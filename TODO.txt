@@ -1,1 +1,18 @@
 - use SSE?
+
+[
+    "Adrien", 
+    "Nico", 
+    "Seb", 
+    "JB", 
+    "Florian", 
+    "Juliette", 
+    "Louis GG", 
+    "Mathias", 
+    "Nours", 
+    "Nina", 
+    "Brice", 
+    "Christelle", 
+    "Thomas", 
+    "Théo"
+]
