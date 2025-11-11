@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { replacer, shuffleArray } from './helpers';
-import { User, UserAndTable, setNotReady, setReady, setIp } from './user';
+import { User, UserAndTable, setReadyOrNot, setIp, setActivity, setNotReady } from './user';
 
 type Sessions = Map<WebSocket, { [key: string]: string }>;
 const DEFAULT_TABLE = 'panama';
@@ -78,7 +78,7 @@ export class MyDurableObject extends DurableObject<Env> {
 		await this.ctx.storage.put('tables', tables);
 		return 200;
 	}
-	async ready(username: string, ip?: string): Promise<boolean> {
+	async setUserReadyOrNot(username: string, ready: boolean, ip?: string): Promise<boolean> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
 		if (tables.size == 0) {
 			return false;
@@ -95,7 +95,10 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 			console.log(`user ${user.name} found on table ${tableName}`);
 			found = true;
-			setReady(user);
+			setReadyOrNot(user, ready);
+			if (ip !== undefined) {
+				setActivity(user);
+			}
 			break;
 		}
 		if (found) {
@@ -147,7 +150,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			console.log(user);
 			console.log(`setting table ${tableName} ready for user ${username}`);
 			if (!user.ready) {
-				setReady(user);
+				setReadyOrNot(user, true);
 				ready = true;
 			}
 		}
@@ -170,33 +173,33 @@ export class MyDurableObject extends DurableObject<Env> {
 			return false;
 		}
 
+		let panamaTable = tables.get(DEFAULT_TABLE);
+		if (!panamaTable) {
+			panamaTable = new Map();
+		}
+
 		let readyUsers: User[] = [];
-		let notReadyUsers: User[] = [];
-		for (const [tableName, users] of tables) {
-			for (const [username, user] of users) {
-				if (user.ready) {
-					readyUsers.push(user);
-				} else {
-					notReadyUsers.push(user);
-				}
+		for (const [username, user] of panamaTable) {
+			if (user.ready) {
+				readyUsers.push(user);
+				panamaTable.delete(username);
 			}
 		}
 
 		readyUsers = shuffleArray(readyUsers);
-		const newTables = new Map<string, Table>();
+		let tableIndex = 1;
+
 		const assignTable = function (tableName: string, users: User[]) {
-			let table = newTables.get(tableName);
+			let table = tables.get(tableName);
 			if (!table) {
 				table = new Map<string, User>();
-				newTables.set(tableName, table);
+				tables.set(tableName, table);
 			}
-
 			for (let user of users) {
 				table.set(user.name, user);
 			}
 		};
 
-		let tableIndex = 1;
 		while (readyUsers.length > 0) {
 			if (readyUsers.length == 7) {
 				let tableDe7 = readyUsers.splice(0, 7);
@@ -222,14 +225,16 @@ export class MyDurableObject extends DurableObject<Env> {
 				let tableDe1 = readyUsers.splice(0, 1);
 				assignTable(DEFAULT_TABLE, tableDe1);
 				break;
+			} else {
+				const tableName = `Table ${tableIndex}`;
+				if (!tables.has(tableName)) {
+					let tableDe4 = readyUsers.splice(0, 4);
+					assignTable(tableName, tableDe4);
+				}
 			}
-			let tableDe4 = readyUsers.splice(0, 4);
-			assignTable(`Table ${tableIndex}`, tableDe4);
 			tableIndex++;
 		}
-
-		assignTable(DEFAULT_TABLE, notReadyUsers);
-		await this.ctx.storage.put('tables', newTables);
+		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
 	async clearDo(): Promise<void> {

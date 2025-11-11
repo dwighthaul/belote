@@ -1,1 +1,2 @@
 - auto load existing users
+- use SSE

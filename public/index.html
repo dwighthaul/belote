@@ -16,177 +16,184 @@
 
 		<ul id="tables"></ul>
 		<div id="messages">disconnected</div>
-		<a href="/help">Aide et valeur des cartes</a>
+		<a href="/help">Aide</a>
+		<br />
+		<a href="/valeurs.webp">Valeur des cartes</a>
 		<br />
 		<a href="/backend">Backend</a>
 		<script>
 			// @ts-check
-			const connectWebsocket = (username) => {
-				const hostname = window.location.host;
-				const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
-				let ws = new WebSocket(scheme + hostname + '/me/meltdown?username=' + encodeURIComponent(username));
+			(function () {
 				const messagesDiv = document.getElementById('messages');
 				if (!messagesDiv) {
 					console.log('messages element not found');
 					return;
 				}
 
-				ws.onopen = () => {
-					const msg = 'Connected to Meltdown, tables updated';
-					messagesDiv.innerHTML = msg;
-					console.log(msg);
-					refreshTables();
+				const ulTables = document.getElementById('tables');
+				if (!ulTables) {
+					console.log('tables element not found');
+					return;
+				}
+
+				const connectWebsocket = (username) => {
+					const hostname = window.location.host;
+					const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
+					const connect = () => {
+						const ws = new WebSocket(scheme + hostname + '/me/meltdown?username=' + encodeURIComponent(username));
+
+						ws.onopen = () => {
+							const msg = 'Connected to Meltdown, tables updated';
+							messagesDiv.innerHTML = msg;
+							console.log(msg);
+							refreshTables();
+						};
+
+						ws.onmessage = (event) => {
+							const msg = `Update tables because : ${event.data}`;
+							console.log(msg);
+							messagesDiv.innerHTML = msg;
+							refreshTables();
+						};
+
+						ws.onerror = () => {
+							ws.close();
+						};
+
+						ws.onclose = () => {
+							const msg = 'Disconnected from Meltdown!';
+							console.log(msg);
+							messagesDiv.innerHTML = msg;
+							ulTables.innerHTML = '';
+							setTimeout(connect, 1000);
+						};
+					};
+
+					connect();
 				};
 
-				ws.onmessage = (event) => {
-					const msg = `Update tables because : ${event.data}`;
-					console.log(msg);
-					messagesDiv.innerHTML = msg;
-					refreshTables();
-				};
+				const refreshTables = () =>
+					fetch('/public/tables')
+						.then((resp) => resp.text())
+						.then((text) => {
+							const localUsername = localStorage.getItem('username');
+							let found = false;
+							ulTables.innerHTML = '';
 
-				ws.onclose = () => {
-					const msg = 'Disconnected from Meltdown!';
-					console.log(msg);
-					messagesDiv.innerHTML = msg;
-					const ulTables = document.getElementById('tables');
-					if (!ulTables) {
-						console.log('tables element not found');
+							const tables = JSON.parse(text);
+							console.log('Tables:', tables);
+
+							for (const [table, users] of Object.entries(tables)) {
+								const liTable = document.createElement('li');
+								liTable.innerText = table + ' (' + users.length + ' players)';
+								if (users.length == 5) {
+									liTable.innerText += ' : apprenez le Tarot a 5 :p';
+								}
+								const ulUsers = document.createElement('ul');
+								for (const [username, user] of Object.entries(users)) {
+									const liUser = document.createElement('li');
+									if (user.ready) {
+										liUser.innerText = user.name + ' (ready)';
+										liUser.setAttribute('style', 'color: #006400');
+									} else {
+										liUser.innerText = user.name + ' (not ready)';
+										liUser.setAttribute('style', 'color: #FF8C00');
+									}
+									if (!user.ip) {
+										liUser.innerText += ' added by admin';
+									}
+									if (user.name == localUsername) {
+										found = true;
+									}
+									ulUsers.appendChild(liUser);
+								}
+								liTable.appendChild(ulUsers);
+								ulTables.appendChild(liTable);
+							}
+
+							if (!found) {
+								const joinButton = document.getElementById('join_button');
+								if (!joinButton) {
+									console.log('join_button button not found');
+									return;
+								}
+								const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
+								joinButtonInput.disabled = false;
+								localStorage.removeItem('username');
+
+								const connectedDiv = document.getElementById('connected');
+								if (!connectedDiv) {
+									console.log('connected element not found');
+									return;
+								}
+								connectedDiv.innerHTML = '';
+							}
+						});
+
+				const connectedUser = (username) => {
+					const joinButton = document.getElementById('join_button');
+					if (!joinButton) {
+						console.log('join_button button not found');
 						return;
 					}
-					ulTables.innerHTML = '';
-				};
-			};
+					const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
+					joinButtonInput.disabled = true;
 
-			const refreshTables = () =>
-				fetch('/public/tables')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const localUsername = localStorage.getItem('username');
-						let found = false;
+					const connectedDiv = document.getElementById('connected');
+					if (!connectedDiv) {
+						console.log('connected element not found');
+						return;
+					}
+					connectedDiv.innerHTML = '';
 
-						const ulTables = document.getElementById('tables');
-						if (!ulTables) {
-							console.log('tables element not found');
-							return;
-						}
-						ulTables.innerHTML = '';
-
-						const tables = JSON.parse(text);
-						console.log('Tables:', tables);
-
-						for (const [table, users] of Object.entries(tables)) {
-							const liTable = document.createElement('li');
-							liTable.innerText = table + ' (' + users.length + ' players)';
-							if (users.length == 5) {
-								liTable.innerText += ' : apprenez le Tarot a 5 :p';
-							}
-							const ulUsers = document.createElement('ul');
-							for (const [username, user] of Object.entries(users)) {
-								const liUser = document.createElement('li');
-								if (user.ready) {
-									liUser.innerText = user.name + ' (ready)';
-									liUser.setAttribute('style', 'color: #006400');
-								} else {
-									liUser.innerText = user.name + ' (not ready)';
-									liUser.setAttribute('style', 'color: #FF8C00');
-								}
-								if (!user.ip) {
-									liUser.innerText += ' added by admin';
-								}
-								if (user.name == localUsername) {
-									found = true;
-								}
-								ulUsers.appendChild(liUser);
-							}
-							liTable.appendChild(ulUsers);
-							ulTables.appendChild(liTable);
-						}
-
-						if (!found) {
-							const joinButton = document.getElementById('join_button');
-							if (!joinButton) {
-								console.log('join_button button not found');
-								return;
-							}
-							const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
-							joinButtonInput.disabled = false;
-							localStorage.removeItem('username');
-
-							const connectedDiv = document.getElementById('connected');
-							if (!connectedDiv) {
-								console.log('connected element not found');
-								return;
-							}
-							connectedDiv.innerHTML = '';
-						}
-					});
-
-			const connectedUser = (username) => {
-				const joinButton = document.getElementById('join_button');
-				if (!joinButton) {
-					console.log('join_button button not found');
-					return;
-				}
-				const joinButtonInput = /** @type {HTMLInputElement} */ (joinButton);
-				joinButtonInput.disabled = true;
-
-				const connectedDiv = document.getElementById('connected');
-				if (!connectedDiv) {
-					console.log('connected element not found');
-					return;
-				}
-				connectedDiv.innerHTML = '';
-
-				const quitButton = document.createElement('button');
-				quitButton.innerHTML = 'Quit Meltdown (' + username + ')';
-				quitButton.addEventListener('click', function (event) {
-					fetch('/me/quit?username=' + encodeURIComponent(username)).then(() => {
-						console.log('User left:', username);
-						localStorage.removeItem('username');
-						connectedDiv.innerHTML = '';
-						joinButtonInput.disabled = false;
-						refreshTables();
-					});
-				});
-				connectedDiv.appendChild(quitButton);
-				connectedDiv.appendChild(document.createElement('br'));
-
-				const finishedButton = document.createElement('button');
-				finishedButton.innerHTML = 'Game finished (return to Panama)!';
-				finishedButton.addEventListener('click', function (event) {
-					fetch('/me/finish?username=' + encodeURIComponent(username)).then((response) => {
-						if (response.status == 404) {
+					const quitButton = document.createElement('button');
+					quitButton.innerHTML = 'Quit Meltdown (' + username + ')';
+					quitButton.addEventListener('click', function (event) {
+						fetch('/me/quit?username=' + encodeURIComponent(username)).then(() => {
+							console.log('User left:', username);
 							localStorage.removeItem('username');
 							connectedDiv.innerHTML = '';
 							joinButtonInput.disabled = false;
-						} else {
-							console.log('User finished:', username);
-						}
-						refreshTables();
-					});
-				});
-				connectedDiv.appendChild(finishedButton);
-				connectedDiv.appendChild(document.createElement('br'));
-
-				const readyButton = document.createElement('button');
-				readyButton.innerHTML = 'Ready to play!';
-				readyButton.addEventListener('click', function (event) {
-					fetch('/me/ready?username=' + encodeURIComponent(username)).then((response) => {
-						if (response.status == 404) {
-							localStorage.removeItem('username');
-							connectedDiv.innerHTML = '';
-							joinButtonInput.disabled = false;
-						} else {
-							console.log('User ready:', username);
 							refreshTables();
-						}
+						});
 					});
-				});
-				connectedDiv.appendChild(readyButton);
-			};
+					connectedDiv.appendChild(quitButton);
+					connectedDiv.appendChild(document.createElement('br'));
 
-			(function () {
+					const finishedButton = document.createElement('button');
+					finishedButton.innerHTML = 'Game finished (return to Panama)!';
+					finishedButton.addEventListener('click', function (event) {
+						fetch('/me/finish?username=' + encodeURIComponent(username)).then((response) => {
+							if (response.status == 404) {
+								localStorage.removeItem('username');
+								connectedDiv.innerHTML = '';
+								joinButtonInput.disabled = false;
+							} else {
+								console.log('User finished:', username);
+							}
+							refreshTables();
+						});
+					});
+					connectedDiv.appendChild(finishedButton);
+					connectedDiv.appendChild(document.createElement('br'));
+
+					const readyButton = document.createElement('button');
+					readyButton.innerHTML = 'Ready to play!';
+					readyButton.addEventListener('click', function (event) {
+						fetch('/me/ready?username=' + encodeURIComponent(username)).then((response) => {
+							if (response.status == 404) {
+								localStorage.removeItem('username');
+								connectedDiv.innerHTML = '';
+								joinButtonInput.disabled = false;
+							} else {
+								console.log('User ready:', username);
+								refreshTables();
+							}
+						});
+					});
+					connectedDiv.appendChild(readyButton);
+				};
+
 				const username = localStorage.getItem('username');
 				if (username) {
 					console.log(`user already set: ${username}`);

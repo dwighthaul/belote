@@ -44,7 +44,7 @@ export default {
 				if (!username) {
 					return missingUsername;
 				}
-				if (await stub.ready(username, ip)) {
+				if (await stub.setUserReadyOrNot(username, true, ip)) {
 					await stub.notifyAll(`user ${username} ready!`);
 				}
 				return new Response('🎉 User ready!', success);
@@ -119,10 +119,24 @@ export default {
 					if (!username) {
 						return missingUsername;
 					}
-					const ready = await stub.ready(username, undefined);
+					const ready = await stub.setUserReadyOrNot(username, true, undefined);
 					if (ready) {
 						await stub.notifyAll(`user ${username} ready`);
 						return new Response(`🎉 User ${username} ready!`, success);
+					} else {
+						return new Response(`User ${username} not found`, { status: 404 });
+					}
+				});
+			}
+			case '/admin/users/notready': {
+				return authenticate(request, env, async () => {
+					if (!username) {
+						return missingUsername;
+					}
+					const ready = await stub.setUserReadyOrNot(username, false, undefined);
+					if (ready) {
+						await stub.notifyAll(`user ${username} NOT ready`);
+						return new Response(`🎉 User ${username} NOT ready!`, success);
 					} else {
 						return new Response(`User ${username} not found`, { status: 404 });
 					}

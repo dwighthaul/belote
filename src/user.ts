@@ -3,27 +3,37 @@ export function setIp(user: User, ip: string | undefined) {
 	user.lastActiveAt = Date.now();
 }
 
-export function setReady(user: User) {
-	user.ready = true;
-	user.lastActiveAt = Date.now();
-}
+// function setReady(user: User) {
+// 	user.ready = true;
+// 	user.lastActiveAt = Date.now();
+// }
 
 export function setNotReady(user: User) {
 	user.ready = false;
 	user.lastActiveAt = Date.now();
 }
 
+export function setActivity(user: User) {
+	user.lastActiveAt = Date.now();
+}
+
+export function setReadyOrNot(user: User, ready: boolean) {
+	user.ready = ready;
+}
+
 export class User {
 	name: string;
 	ready: boolean;
 	joinedAt: number;
-	lastActiveAt: number;
+	lastActiveAt: number | undefined;
 	ip: string | undefined;
 
 	constructor(name: string, ip: string | undefined) {
 		this.name = name;
 		this.joinedAt = Date.now();
-		this.lastActiveAt = this.joinedAt;
+		if (ip !== undefined) {
+			this.lastActiveAt = this.joinedAt;
+		}
 		this.ip = ip;
 		this.ready = false;
 	}

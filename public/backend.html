@@ -25,7 +25,6 @@
 		<div id="messages">disconnected</div>
 		<a href="/">Frontend</a>
 		<br />
-		<a href="/help">Aide</a>
 		<script>
 			// @ts-check
 			(function () {
@@ -35,47 +34,53 @@
 					return;
 				}
 
+				const ulTables = document.getElementById('tables');
+				if (!ulTables) {
+					console.log('tables element not found');
+					return;
+				}
+
 				const connectWebsocket = () => {
 					const hostname = window.location.host;
 					const scheme = document.location.protocol === 'http:' ? 'ws://' : 'wss://';
-					let ws = new WebSocket(scheme + hostname + '/admin/meltdown');
 
-					ws.onopen = () => {
-						const msg = 'Connected to Meltdown, tables updated';
-						messagesDiv.innerHTML = msg;
-						console.log(msg);
-						refreshTables();
+					const connect = () => {
+						const ws = new WebSocket(scheme + hostname + '/admin/meltdown');
+
+						ws.onopen = () => {
+							const msg = 'Connected to Meltdown, tables updated';
+							messagesDiv.innerHTML = msg;
+							console.log(msg);
+							refreshTables();
+						};
+
+						ws.onmessage = (event) => {
+							const msg = `Update tables because : ${event.data}`;
+							console.log(msg);
+							messagesDiv.innerHTML = msg;
+							refreshTables();
+						};
+
+						ws.onerror = () => {
+							ws.close();
+						};
+
+						ws.onclose = () => {
+							const msg = 'Disconnected from Meltdown!';
+							console.log(msg);
+							messagesDiv.innerHTML = msg;
+							ulTables.innerHTML = '';
+							setTimeout(connect, 1000);
+						};
 					};
 
-					ws.onmessage = (event) => {
-						const msg = `Update tables because : ${event.data}`;
-						console.log(msg);
-						messagesDiv.innerHTML = msg;
-						refreshTables();
-					};
-
-					ws.onclose = () => {
-						const msg = 'Disconnected from Meltdown!';
-						console.log(msg);
-						messagesDiv.innerHTML = msg;
-						const ulTables = document.getElementById('tables');
-						if (!ulTables) {
-							console.log('tables element not found');
-							return;
-						}
-						ulTables.innerHTML = '';
-					};
+					connect();
 				};
 
 				const refreshTables = () =>
 					fetch('/public/tables')
 						.then((resp) => resp.text())
 						.then((text) => {
-							const ulTables = document.getElementById('tables');
-							if (!ulTables) {
-								console.log('tables element not found');
-								return;
-							}
 							ulTables.innerHTML = '';
 
 							const tables = JSON.parse(text);
@@ -135,6 +140,22 @@
 											});
 									});
 									liUser.appendChild(readyButton);
+
+									const notReadyButton = document.createElement('button');
+									notReadyButton.innerText = 'Not Ready';
+									notReadyButton.addEventListener('click', function (event) {
+										fetch('/admin/users/notready?username=' + encodeURIComponent(user.name))
+											.then(() => {
+												console.log('Ready not user:', user.name);
+												refreshTables();
+											})
+											.catch((error) => {
+												const msg = 'Fetch error:' + error;
+												messagesDiv.innerHTML = msg;
+												console.error(msg);
+											});
+									});
+									liUser.appendChild(notReadyButton);
 
 									const spanInfo = document.createElement('span');
 									spanInfo.innerText =
