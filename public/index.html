@@ -147,6 +147,7 @@
 									const tdUsername = rowUser.insertCell();
 									tdUsername.appendChild(document.createTextNode(user.name + (user.name == localUsername ? ' (you)' : '')));
 
+									(user.name == localUsername) ? tdUsername.className = 'username_cell' : null;
 
 									if (user.ready) readyUsers++;
 
