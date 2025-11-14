@@ -1,4 +1,5 @@
 :root{
+	--primary-color-dark: #072a08;
 	--primary-color: #0f5311;
 	--primary-color-light: #66a468;
 	--secondary-color: #66a468;
@@ -89,6 +90,10 @@ margin: auto 20%;
     border-radius: 10px;
 }
 
+.username_cell {
+	font-weight: bold;
+	color: var(--primary-color-dark);
+}
 
 .lebar {
 	width: 100px;
