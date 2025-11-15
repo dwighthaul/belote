@@ -189,6 +189,20 @@ export default {
 					}
 				});
 			}
+			case '/admin/users/inactive': {
+				return authenticate(request, env, async () => {
+					if (!username) {
+						return missingUsername;
+					}
+					const inactive = await stub.adminSetUserInactive(username);
+					if (inactive) {
+						await stub.notifyAll(`user ${username} set inactive`);
+						return new Response(`🎉 User ${username} set inactive!`, success);
+					} else {
+						return new Response(`User ${username} not found`, { status: 404 });
+					}
+				});
+			}
 			case '/admin/users/delete': {
 				return authenticate(request, env, async () => {
 					if (!username) {

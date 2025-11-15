@@ -17,7 +17,12 @@ export function setActivity(user: User) {
 	user.lastActiveAt = Date.now();
 }
 
-export function setReadyOrNot(user: User, ready: boolean): boolean  {
+export function setInactive(user: User) {
+	user.lastActiveAt = undefined;
+	user.ready = false;
+}
+
+export function setReadyOrNot(user: User, ready: boolean): boolean {
 	user.ready = ready;
 	return user.ready;
 }
@@ -35,15 +40,13 @@ export class User {
 	ready: boolean;
 	canPlayTarot: boolean;
 	canPlayTwoTables: boolean;
-	joinedAt: number;
 	lastActiveAt: number | undefined;
 	ip: string | undefined;
 
 	constructor(name: string, ip: string | undefined) {
 		this.name = name;
-		this.joinedAt = Date.now();
 		if (this.ip) {
-			this.lastActiveAt = this.joinedAt;
+			this.lastActiveAt = Date.now();
 		}
 		this.ip = ip;
 		this.ready = false;

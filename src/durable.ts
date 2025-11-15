@@ -1,6 +1,17 @@
 import { DurableObject } from 'cloudflare:workers';
 import { replacer, shuffleArray } from './helpers';
-import { User, UserAndTable, setReadyOrNot, setIp, setActivity, setNotReady, toggleCanPlayTarot, toggleCanPlayTwoTables } from './user';
+import {
+	User,
+	UserAndTable,
+	setReadyOrNot,
+	setIp,
+	setActivity,
+	setNotReady,
+	toggleCanPlayTarot,
+	toggleCanPlayTwoTables,
+	setInactive,
+} from './user';
+import { userInfo } from 'os';
 
 type Sessions = Map<WebSocket, { [key: string]: string }>;
 const DEFAULT_TABLE = 'panama';
@@ -78,7 +89,7 @@ export class MyDurableObject extends DurableObject<Env> {
 		await this.ctx.storage.put('tables', tables);
 		return 200;
 	}
-	findUserAndTable(tables: Tables, searchedUsername: string, ip?: string): [Table, User] | undefined{
+	findUserAndTable(tables: Tables, searchedUsername: string, ip?: string): [Table, User] | undefined {
 		outerLoop: for (const [tableName, users] of tables) {
 			innerLoop: for (const [username, user] of users) {
 				if (username != searchedUsername) {
@@ -99,7 +110,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			return false;
 		}
 
-		let foundResult = this.findUserAndTable(tables, searchedUsername,ip);
+		let foundResult = this.findUserAndTable(tables, searchedUsername, ip);
 
 		let found = !!foundResult;
 		if (foundResult) {
@@ -117,7 +128,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			return false;
 		}
 
-		let foundResult = this.findUserAndTable(tables, searchedUsername,ip);
+		let foundResult = this.findUserAndTable(tables, searchedUsername, ip);
 
 		let found = !!foundResult;
 		if (foundResult) {
@@ -135,7 +146,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			return false;
 		}
 
-		let foundResult = this.findUserAndTable(tables, searchedUsername,ip);
+		let foundResult = this.findUserAndTable(tables, searchedUsername, ip);
 
 		let found = !!foundResult;
 		if (foundResult) {
@@ -181,6 +192,26 @@ export class MyDurableObject extends DurableObject<Env> {
 	}
 
 	// for admin exclusively
+	async adminSetUserInactive(searchedUsername: string): Promise<boolean> {
+		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
+		if (tables.size == 0) {
+			return false;
+		}
+
+		let foundResult = this.findUserAndTable(tables, searchedUsername, undefined);
+
+		let found = !!foundResult;
+		if (foundResult) {
+			const user = foundResult[1];
+			if (user.lastActiveAt === undefined && !user.ready) {
+				// already inactive
+				return false;
+			}
+			setInactive(user);
+			await this.ctx.storage.put('tables', tables);
+		}
+		return found;
+	}
 	async adminTableReady(tableName: string): Promise<boolean> {
 		const tables: Tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
 		if (tables.size == 0) {
@@ -254,12 +285,12 @@ export class MyDurableObject extends DurableObject<Env> {
 		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
-	
-	affectTables(tables: Tables, users: User[], currentTable:number): void  {
+
+	affectTables(tables: Tables, users: User[], currentTable: number): void {
 		if (users.length === 0) {
 			return;
 		}
-		var currentTableSize = users.length < 8 ? users.length : (users.length%4) + 4;
+		var currentTableSize = users.length < 8 ? users.length : (users.length % 4) + 4;
 		const assignTable = function (tableName: string, users: User[]) {
 			let table = tables.get(tableName);
 			if (!table) {
@@ -277,34 +308,40 @@ export class MyDurableObject extends DurableObject<Env> {
 			if (currentTableSize == 5) {
 				let tarotPlayers = users.filter((user) => user.canPlayTarot);
 				if (tarotPlayers.length >= 5) {
-					playersSelected = tarotPlayers.splice(0,5);
+					playersSelected = tarotPlayers.splice(0, 5);
 				} else {
 					// Le pauvre gars seul qui va aller au panama
-					playersSelected.push(users[users.length -1]);
+					playersSelected.push(users[users.length - 1]);
 				}
 			} else {
 				if (currentTableSize == 7) {
 					let usersThanCanPlayTwoTables = users.filter((user) => user.canPlayTwoTables);
-					if (usersThanCanPlayTwoTables.length > 0 ) {
-						playersSelected = [usersThanCanPlayTwoTables[0],...users.filter((user) => user.name !== usersThanCanPlayTwoTables[0].name).slice(0,6)];
+					if (usersThanCanPlayTwoTables.length > 0) {
+						playersSelected = [
+							usersThanCanPlayTwoTables[0],
+							...users.filter((user) => user.name !== usersThanCanPlayTwoTables[0].name).slice(0, 6),
+						];
 					} else {
 						// 3 pauvres gars seul qui va aller au panama
-						playersSelected.push(...users.slice(0,3));
+						playersSelected.push(...users.slice(0, 3));
 					}
 				} else {
-					playersSelected = users.splice(0,currentTableSize);
+					playersSelected = users.splice(0, currentTableSize);
 				}
-				
 			}
 		}
 
 		if (playersSelected.length < 4) {
-			assignTable(DEFAULT_TABLE,playersSelected);
+			assignTable(DEFAULT_TABLE, playersSelected);
 		} else {
-			assignTable(`Table ${currentTable}`,playersSelected);
+			assignTable(`Table ${currentTable}`, playersSelected);
 		}
-		
-		this.affectTables(tables, users.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name)), currentTable+1);
+
+		this.affectTables(
+			tables,
+			users.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name)),
+			currentTable + 1
+		);
 	}
 
 	async adminShuffleTables(): Promise<boolean> {

@@ -90,8 +90,22 @@
 							// console.log('Tables:', tables);
 							for (let [table, users] of Object.entries(tables)) {
 								users.sort((a, b) => {
+									if (!a.ready || !b.ready) {
+										if (a.ready && !b.ready) {
+											return -1;
+										}
+										if (!a.ready && b.ready) {
+											return 1;
+										}
+									}
 									if (!a.lastActiveAt && !b.lastActiveAt) {
-										return b.joinedAt - a.joinedAt;
+										return 0;
+									}
+									if (!a.lastActiveAt) {
+										return 1;
+									}
+									if (!b.lastActiveAt) {
+										return -1;
 									}
 									return b.lastActiveAt - a.lastActiveAt;
 								});
@@ -172,6 +186,23 @@
 									});
 									liUser.appendChild(notReadyButton);
 
+									const inactiveButton = document.createElement('button');
+									inactiveButton.innerText = 'Inactive';
+									inactiveButton.addEventListener('click', function (event) {
+										fetch('/admin/users/inactive?username=' + encodeURIComponent(user.name))
+											.then((resp) => resp.text())
+											.then((text) => {
+												// console.log(text);
+												refreshTables();
+											})
+											.catch((error) => {
+												const msg = 'Fetch error:' + error;
+												messagesDiv.innerHTML = msg;
+												console.error(msg);
+											});
+									});
+									liUser.appendChild(inactiveButton);
+
 									const canPlayTwoTablesButton = document.createElement('button');
 									canPlayTwoTablesButton.innerHTML = 'Can play two tables!';
 									canPlayTwoTablesButton.addEventListener('click', function (event) {
@@ -210,9 +241,8 @@
 									spanInfo.innerText =
 										` ${user.name}` +
 										` [IP: ${user.ip}]` +
-										` [Joined: ${new Date(user.joinedAt).toLocaleString()}]` +
-										` [Activity: ${new Date(user.lastActiveAt).toLocaleString()}]`+
-										` [CanPlayTarot: ${user.canPlayTarot}]`+
+										` [Activity: ${new Date(user.lastActiveAt).toLocaleString()}]` +
+										` [CanPlayTarot: ${user.canPlayTarot}]` +
 										` [CanPlayTwoTables: ${user.canPlayTwoTables}]`;
 									if (user.ready) {
 										readyUsers++;
@@ -260,8 +290,6 @@
 											});
 									});
 									liTable.appendChild(tableNotReadyButton);
-
-									
 
 									if (table != 'panama') {
 										const tableDeleteButton = document.createElement('button');
