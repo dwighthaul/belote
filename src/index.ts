@@ -56,6 +56,24 @@ export default {
 				}
 				return new Response(JSON.stringify({ message: `🎉 User ready!` }), success);
 			}
+			case '/me/toggleCanPlayTwoTables': {
+				if (!username) {
+					return missingUsername;
+				}
+				if (await stub.toggleCanPlayTwoTables(username, ip)) {
+					await stub.notifyAll(`user ${username} toggleCanPlayTwoTables!`);
+				}
+				return new Response('🎉 User ready!', success);
+			}
+			case '/me/toggleCanPlayTarot': {
+				if (!username) {
+					return missingUsername;
+				}
+				if (await stub.toggleCanPlayTarot(username, ip)) {
+					await stub.notifyAll(`user ${username} toggleCanPlayTarot!`);
+				}
+				return new Response('🎉 User ready!', success);
+			}
 			case '/me/join': {
 				if (!username) {
 					return missingUsername;
@@ -121,13 +139,41 @@ export default {
 					return unchanged;
 				});
 			}
+			case '/admin/users/toggleCanPlayTarot': {
+				return authenticate(request, env, async () => {
+					if (!username) {
+						return missingUsername;
+					}
+					const found = await stub.toggleCanPlayTarot(username);
+					if (found) {
+						await stub.notifyAll(`user ${username} toggleCanPlayTarot!`);
+						return new Response(`🎉 User ${username} toggleCanPlayTarot!`, success);
+					} else {
+						return new Response(`User ${username} not found`, { status: 404 });
+					}
+				});
+			}
+			case '/admin/users/toggleCanPlayTwoTables': {
+				return authenticate(request, env, async () => {
+					if (!username) {
+						return missingUsername;
+					}
+					const found = await stub.toggleCanPlayTwoTables(username);
+					if (found) {
+						await stub.notifyAll(`user ${username} toggleCanPlayTwoTables!`);
+						return new Response(`🎉 User ${username} toggleCanPlayTwoTables!`, success);
+					} else {
+						return new Response(`User ${username} not found`, { status: 404 });
+					}
+				});
+			}
 			case '/admin/users/ready': {
 				return authenticate(request, env, async () => {
 					if (!username) {
 						return missingUsername;
 					}
-					const ready = await stub.setUserReadyOrNot(username, true, undefined);
-					if (ready) {
+					const found = await stub.setUserReadyOrNot(username, true, undefined);
+					if (found) {
 						await stub.notifyAll(userReady(username));
 						return new Response(JSON.stringify({ message: userReady(username) }), success);
 					} else {
@@ -147,6 +193,20 @@ export default {
 						return new Response(JSON.stringify({ message: `🎉 User ${username} NOT ready!` }), success);
 					} else {
 						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
+					}
+				});
+			}
+			case '/admin/users/inactive': {
+				return authenticate(request, env, async () => {
+					if (!username) {
+						return missingUsername;
+					}
+					const inactive = await stub.adminSetUserInactive(username);
+					if (inactive) {
+						await stub.notifyAll(`user ${username} set inactive`);
+						return new Response(`🎉 User ${username} set inactive!`, success);
+					} else {
+						return new Response(`User ${username} not found`, { status: 404 });
 					}
 				});
 			}
