@@ -16,7 +16,7 @@
 		"editor.suggest.insertMode": "replace"
 	},
 	"[css]": {
-	    "editor.defaultFormatter": "vscode.css-language-features", // Use built-in CSS formatter
+	    "editor.defaultFormatter": "vscode.css-language-features",
 	    "editor.formatOnSave": true,
 		"editor.codeActionsOnSave": {
 		}
