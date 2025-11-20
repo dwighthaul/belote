@@ -59,6 +59,16 @@ angular.module('meltdownApp', [])
       });
     };
 
+    vm.notready = function () {
+      $http.get('/me/notready?username=' + encodeURIComponent(vm.username)).then((response) => {
+        if (response.status === 404) {
+          vm.quit();
+        } else {
+          vm.refreshTables();
+        }
+      });
+    };
+
     vm.refreshTables = function () {
       $http.get('/public/tables').then((resp) => {
         const tablesData = resp.data;

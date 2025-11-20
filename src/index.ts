@@ -35,6 +35,12 @@ export default {
 			}
 			return 'user ready!';
 		};
+		const userNotReady = (username: string): string => {
+			if (username) {
+				return `🎉 user ${username} not ready!`;
+			}
+			return 'user not ready!';
+		};
 
 		const stub = env.MY_DURABLE_OBJECT.getByName('belote');
 		if (!stub) {
@@ -56,6 +62,15 @@ export default {
 					await stub.notifyAll(userReady(username));
 				}
 				return new Response(JSON.stringify({ message: `🎉 User ready!` }), success);
+			}
+			case '/me/notready': {
+				if (!username) {
+					return missingUsername;
+				}
+				if (await stub.setUserReadyOrNot(username, false, ip)) {
+					await stub.notifyAll(userNotReady(username));
+				}
+				return new Response(JSON.stringify({ message: `🎉 User not ready!` }), success);
 			}
 			case '/me/toggleCanPlayTwoTables': {
 				if (!username) {
@@ -190,8 +205,8 @@ export default {
 					}
 					const ready = await stub.setUserReadyOrNot(username, false, undefined);
 					if (ready) {
-						await stub.notifyAll(`user ${username} NOT ready`);
-						return new Response(JSON.stringify({ message: `🎉 User ${username} NOT ready!` }), success);
+						await stub.notifyAll(userNotReady(username));
+						return new Response(JSON.stringify({ message: userNotReady(username) }), success);
 					} else {
 						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
 					}

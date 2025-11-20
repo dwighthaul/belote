@@ -16,9 +16,10 @@
 		</form>
 
 		<div class="button_container">
-			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.quit()">Quit Meltdown ({{ctrl.username}})</button><br />
-			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.finish()">Game finished (return to Panama)!</button><br />
+			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.quit()">Quit Meltdown ({{ctrl.username}})</button>
+			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.finish()">Game finished (return to Panama)!</button>
 			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.ready()">Ready to play!</button>
+			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.notready()">NOT ready to play!</button>
 		</div>
 
 		<br />
