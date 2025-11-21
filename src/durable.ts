@@ -280,12 +280,13 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 		}
 
-		this.affectTables(tables, shuffleArray(readyUsers), 1);
+
+		this.affectTables(tables, shuffleArray(readyUsers));
 		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
 
-	affectTables(tables: Tables, users: User[], currentTable: number): void {
+	affectTables(tables: Tables, users: User[]): void {
 		if (users.length === 0) {
 			return;
 		}
@@ -333,13 +334,16 @@ export class MyDurableObject extends DurableObject<Env> {
 		if (playersSelected.length < 4) {
 			assignTable(DEFAULT_TABLE, playersSelected);
 		} else {
-			assignTable(`Table ${currentTable}`, playersSelected);
+			var nextTableAvailable = 1;
+			while (tables.get(`Table ${nextTableAvailable}`)) {
+				nextTableAvailable ++;
+			}
+			assignTable(`Table ${nextTableAvailable}`, playersSelected);
 		}
 
 		this.affectTables(
 			tables,
 			users.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name)),
-			currentTable + 1
 		);
 	}
 
@@ -403,7 +407,22 @@ export class MyDurableObject extends DurableObject<Env> {
 	// no modifying
 	async getTables(): Promise<string> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
-		let pretty = JSON.stringify(Object.fromEntries(tables), replacer, 2);
+		let entries = Object.fromEntries(tables);
+		entries = Object.keys(entries).sort((table1,table2) => {
+			if (table1===DEFAULT_TABLE) {
+				return -1;
+			}
+			if (table2===DEFAULT_TABLE) {
+				return 1;
+			}
+			return table1.localeCompare(table2);
+		}).reduce(
+			(obj, key) => {
+				obj[key] = entries[key]; 
+				return obj;
+			}, {} as Record<string, typeof entries[keyof typeof entries]>
+		);
+		const pretty = JSON.stringify(entries, replacer, 2);
 		return pretty;
 	}
 	async getUsers(): Promise<string> {
