@@ -303,7 +303,13 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 		};
 		// Index 0 for 4,Index 1 for 5,Index 2 for 6,Index 3 for 7,
-		let maxAllocationPossible = [Math.floor(users.length/4),Math.floor(users.filter((user) => user.canPlayTarot).length/5),Math.floor(users.length/6),users.filter((user) => user.canPlayTwoTables).length];
+		let maxAllocationPossible = [
+			Math.floor(users.length/4),
+			//Maximum de nombre de tables qui peuvent jouer au tarot
+			Math.floor(users.filter((user) => user.canPlayTarot).length/5),
+			Math.floor(users.length/6),
+			//Maximum de nombre de tables ayant un joueur qui peut jouer sur deux tables
+			users.filter((user) => user.canPlayTwoTables).length];
 		let candidates = [];
 		for (let t4 = 0; t4 <= maxAllocationPossible[0]; t4++) {
 			for (let t5 = 0; t5 <= maxAllocationPossible[1]; t5++) {
@@ -345,7 +351,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			bestCombinationPossible = secondBestCombinations.filter(combination => combination[0] === maxT4)[0];
 
 			//Now we assign the players that would be left to Panama...
-			let playersSelected = currentPlayers.filter((user) => !user.canPlayTarot && !user.canPlayTwoTables).slice(0,currentPlayers.length - secondBestCombinationParticipantNumber);
+			let playersSelected = currentPlayers.filter((user) => (!user.canPlayTarot || bestCombinationPossible[1] == 0) && (!user.canPlayTwoTables || bestCombinationPossible[3] == 0)).slice(0,currentPlayers.length - secondBestCombinationParticipantNumber);
 			assignTable(DEFAULT_TABLE, playersSelected);
 			currentPlayers = currentPlayers.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name));
 		}
