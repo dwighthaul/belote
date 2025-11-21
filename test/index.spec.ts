@@ -55,6 +55,7 @@ const player10 = readyPlayer('player 10');
 const player11 = readyPlayer('player 11');
 const player12 = readyPlayer('player 12');
 const player13 = readyPlayer('player 13');
+const player14 = readyPlayer('player 14');
 
 const playerOnTwoTables = readyPlayerTwoTables('player on two tables (1)');
 
@@ -73,14 +74,14 @@ const tarotPlayer11 = readyPlayerTarot('tarot player (11)');
 describe('Table generation', () => {
 	it('0 player(s) without panama table', async () => {
 		const tables = new Map();
-		const expected = new Map([]);
 		generateTables(tables);
+
+		const expected = new Map([]);
 		expect(tables).toStrictEqual(expected);
 	});
 
 	it('0 player(s)', async () => {
 		const tables = new Map([[DEFAULT_TABLE, new Map()]]);
-
 		generateTables(tables);
 
 		const expected = new Map([[DEFAULT_TABLE, new Map()]]);
@@ -89,7 +90,6 @@ describe('Table generation', () => {
 
 	it('1 player(s)', async () => {
 		const tables = new Map([[DEFAULT_TABLE, new Map([[player1.name, player1]])]]);
-
 		generateTables(tables);
 
 		const expected = new Map([[DEFAULT_TABLE, new Map([[player1.name, player1]])]]);
@@ -178,6 +178,36 @@ describe('Table generation', () => {
 		expect(tables).toStrictEqual(expected);
 	});
 
+	it('4 player(s) WITH 4 who knows Tarot', async () => {
+		const tables = new Map([
+			[
+				DEFAULT_TABLE,
+				new Map([
+					[tarotPlayer1.name, tarotPlayer1],
+					[tarotPlayer2.name, tarotPlayer2],
+					[tarotPlayer3.name, tarotPlayer3],
+					[tarotPlayer4.name, tarotPlayer4],
+				]),
+			],
+		]);
+
+		generateTables(tables);
+
+		const expected = new Map([
+			[DEFAULT_TABLE, new Map()],
+			[
+				'Table 1',
+				new Map([
+					[tarotPlayer1.name, tarotPlayer1],
+					[tarotPlayer2.name, tarotPlayer2],
+					[tarotPlayer3.name, tarotPlayer3],
+					[tarotPlayer4.name, tarotPlayer4],
+				]),
+			],
+		]);
+		expect(tables).toStrictEqual(expected);
+	});
+
 	it('5 player(s)', async () => {
 		const tables = new Map([
 			[
@@ -188,6 +218,27 @@ describe('Table generation', () => {
 					[player3.name, player3],
 					[player4.name, player4],
 					[player5.name, player5],
+				]),
+			],
+		]);
+
+		generateTables(tables);
+
+		expect(tables.get(DEFAULT_TABLE)).lengthOf(1);
+		expect(tables.has('Table 1')).toBe(true);
+		expect(tables.get('Table 1')).lengthOf(4);
+	});
+
+	it('5 player(s) WHO knows Tarot', async () => {
+		const tables = new Map([
+			[
+				DEFAULT_TABLE,
+				new Map([
+					[player1.name, player1],
+					[tarotPlayer2.name, tarotPlayer2],
+					[tarotPlayer3.name, tarotPlayer3],
+					[tarotPlayer4.name, tarotPlayer4],
+					[tarotPlayer5.name, tarotPlayer5],
 				]),
 			],
 		]);
@@ -542,5 +593,103 @@ describe('Table generation', () => {
 		expect(tables.get('Table 2')).lengthOf(4);
 		expect(tables.has('Table 3')).toBe(true);
 		expect(tables.get('Table 3')).lengthOf(4);
+	});
+
+	it('13 player(s)', async () => {
+		const tables = new Map([
+			[
+				DEFAULT_TABLE,
+				new Map([
+					[player1.name, player1],
+					[player2.name, player2],
+					[player3.name, player3],
+					[player4.name, player4],
+					[player5.name, player5],
+					[player6.name, player6],
+					[player7.name, player7],
+					[player8.name, player8],
+					[player9.name, player9],
+					[player10.name, player10],
+					[player11.name, player11],
+					[player12.name, player12],
+					[player13.name, player13],
+				]),
+			],
+		]);
+
+		generateTables(tables);
+
+		expect(tables.get(DEFAULT_TABLE)).lengthOf(1);
+		expect(tables.has('Table 1')).toBe(true);
+		expect(tables.get('Table 1')).lengthOf(4);
+		expect(tables.has('Table 2')).toBe(true);
+		expect(tables.get('Table 2')).lengthOf(4);
+		expect(tables.has('Table 3')).toBe(true);
+		expect(tables.get('Table 3')).lengthOf(4);
+	});
+
+	it('13 player(s) WITH 1 player who KNOWS how to play on 2 tables', async () => {
+		const tables = new Map([
+			[
+				DEFAULT_TABLE,
+				new Map([
+					[player1.name, player1],
+					[player2.name, player2],
+					[player3.name, player3],
+					[player4.name, player4],
+					[player5.name, player5],
+					[playerOnTwoTables.name, playerOnTwoTables],
+					[player7.name, player7],
+					[player8.name, player8],
+					[player9.name, player9],
+					[player10.name, player10],
+					[player11.name, player11],
+					[player12.name, player12],
+					[player13.name, player13],
+				]),
+			],
+		]);
+
+		generateTables(tables);
+
+		expect(tables.get(DEFAULT_TABLE)).lengthOf(0);
+		expect(tables.has('Table 1')).toBe(true);
+		expect(tables.get('Table 1')).lengthOf(7);
+		expect(tables.has('Table 2')).toBe(true);
+		expect(tables.get('Table 2')).lengthOf(6);
+	});
+
+	it('14 player(s)', async () => {
+		const tables = new Map([
+			[
+				DEFAULT_TABLE,
+				new Map([
+					[player1.name, player1],
+					[player2.name, player2],
+					[player3.name, player3],
+					[player4.name, player4],
+					[player5.name, player5],
+					[player6.name, player6],
+					[player7.name, player7],
+					[player8.name, player8],
+					[player9.name, player9],
+					[player10.name, player10],
+					[player11.name, player11],
+					[player12.name, player12],
+					[player13.name, player13],
+					[player14.name, player14],
+				]),
+			],
+		]);
+
+		generateTables(tables);
+
+		expect(tables.get(DEFAULT_TABLE)).lengthOf(0);
+		expect(tables.has('Table 1')).toBe(true);
+		expect(tables.get('Table 1')).lengthOf(4);
+		expect(tables.has('Table 2')).toBe(true);
+		expect(tables.get('Table 2')).lengthOf(4);
+		expect(tables.has('Table 3')).toBe(true);
+		expect(tables.get('Table 3')).lengthOf(6);
 	});
 });
