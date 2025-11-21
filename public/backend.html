@@ -34,8 +34,10 @@
 					<tr>
 						<th>Username</th>
 						<th>IP</th>
-						<th>Joined At</th>
 						<th>Last Activity</th>
+						<th>Team</th>
+						<th>Tarot</th>
+						<th>Two tables</th>
 						<th>Ready</th>
 						<th>Fini</th>
 						<th>Supprimer</th>
@@ -44,9 +46,13 @@
 				<tbody>
 					<tr ng-repeat="user in users">
 						<td ng-style="{'color': user.ready ? '#006400' : '#FF8C00'}">{{user.name}}</td>
-						<td>{{user.ip}}</td>
-						<td>{{user.joinedAt | date:'short'}}</td>
+						<td>{{user.ip ? 'connected' : 'added by admin'}}</td>
 						<td>{{user.lastActiveAt | date:'short'}}</td>
+						<td><span ng-repeat="team in user.teams" ng-style="{ color: team }" style="margin-right:3px">{{team}}</span></td>
+						<td ng-if="!user.canPlayTarot" ng-click="vm.toggleCanPlayTarot(user.name)">❌</td>
+						<td ng-if="user.canPlayTarot" ng-click="vm.toggleCanPlayTarot(user.name)">✅</td>
+						<td ng-if="!user.canPlayTwoTables" ng-click="vm.toggleCanPlayTwoTables(user.name)">❌</td>
+						<td ng-if="user.canPlayTwoTables" ng-click="vm.toggleCanPlayTwoTables(user.name)">✅</td>
 						<td ng-if="!user.ready" ng-click="vm.userReady(user.name)">❌</td>
 						<td ng-if="user.ready" ng-click="vm.userNotReady(user.name)">✅</td>
 						<td ng-click="vm.userFinish(user.name)">🏁</td>

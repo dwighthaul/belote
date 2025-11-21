@@ -20,6 +20,8 @@
 			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.finish()">Game finished (return to Panama)!</button>
 			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.ready()">Ready to play!</button>
 			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.notready()">NOT ready to play!</button>
+			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.toggleCanPlayTarot()">Can play tarot!</button>
+			<button ng-if="ctrl.connected" class="secondary_background" ng-click="ctrl.toggleCanPlayTwoTables()">Can play two tables!</button>
 		</div>
 
 		<br />
@@ -31,7 +33,10 @@
 						<tr>
 							<th>Username</th>
 							<th>IP</th>
+							<th>Tarot</th>
+							<th>Two tables</th>
 							<th>Ready</th>
+							<th>Team</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -39,8 +44,11 @@
 							<td ng-class="{'username_cell': user.name === ctrl.username}">
 								{{user.name}}<span ng-if="user.name === ctrl.username"> (you)</span>
 							</td>
-							<td>{{user.ip || 'added by admin'}}</td>
+							<td>{{user.ip ? 'connected' : 'added by admin'}}</td>
+							<td>{{user.canPlayTarot ? '✅' : '❌'}}</td>
+							<td>{{user.canPlayTwoTables ? '✅' : '❌'}}</td>
 							<td>{{user.ready ? '✅' : '❌'}}</td>
+							<td><span ng-repeat="team in user.teams" ng-style="{ color: team }" style="margin-right:3px">{{team}}</span></td>
 						</tr>
 					</tbody>
 				</table>

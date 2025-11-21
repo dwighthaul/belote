@@ -16,6 +16,7 @@ type Sessions = Map<WebSocket, { [key: string]: string }>;
 const DEFAULT_TABLE = 'panama';
 type Table = Map<string, User>;
 type Tables = Map<string, Table>;
+const colors = ["red", "black", "orange", "blue"]
 
 export class MyDurableObject extends DurableObject<Env> {
 	sessions: Sessions;
@@ -261,6 +262,7 @@ export class MyDurableObject extends DurableObject<Env> {
 		}
 		return notReady;
 	}
+
 	async adminGenerateTables(): Promise<boolean> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
 		if (tables.size == 0) {
@@ -280,17 +282,16 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 		}
 
-
-		this.affectTables(tables, shuffleArray(readyUsers));
+		let users = shuffleArray(readyUsers);
+		users.forEach((user) => {
+			user.teams = [];
+		});
+		this.affectTables(tables, users);
 		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
 
 	affectTables(tables: Tables, users: User[]): void {
-		if (users.length === 0) {
-			return;
-		}
-		var currentTableSize = users.length < 8 ? users.length : (users.length % 4) + 4;
 		const assignTable = function (tableName: string, users: User[]) {
 			let table = tables.get(tableName);
 			if (!table) {
@@ -301,50 +302,114 @@ export class MyDurableObject extends DurableObject<Env> {
 				table.set(user.name, user);
 			}
 		};
-		let playersSelected: User[] = [];
-		if (currentTableSize <= 3) {
-			playersSelected = users;
-		} else {
-			if (currentTableSize == 5) {
-				let tarotPlayers = users.filter((user) => user.canPlayTarot);
-				if (tarotPlayers.length >= 5) {
-					playersSelected = tarotPlayers.splice(0, 5);
-				} else {
-					// Le pauvre gars seul qui va aller au panama
-					playersSelected.push(users[users.length - 1]);
-				}
-			} else {
-				if (currentTableSize == 7) {
-					let usersThanCanPlayTwoTables = users.filter((user) => user.canPlayTwoTables);
-					if (usersThanCanPlayTwoTables.length > 0) {
-						playersSelected = [
-							usersThanCanPlayTwoTables[0],
-							...users.filter((user) => user.name !== usersThanCanPlayTwoTables[0].name).slice(0, 6),
-						];
-					} else {
-						// 3 pauvres gars seul qui va aller au panama
-						playersSelected.push(...users.slice(0, 3));
+		// Index 0 for 4,Index 1 for 5,Index 2 for 6,Index 3 for 7,
+		let maxAllocationPossible = [
+			Math.floor(users.length/4),
+			//Maximum de nombre de tables qui peuvent jouer au tarot
+			Math.floor(users.filter((user) => user.canPlayTarot).length/5),
+			Math.floor(users.length/6),
+			//Maximum de nombre de tables ayant un joueur qui peut jouer sur deux tables
+			users.filter((user) => user.canPlayTwoTables).length];
+		let candidates = [];
+		for (let t4 = 0; t4 <= maxAllocationPossible[0]; t4++) {
+			for (let t5 = 0; t5 <= maxAllocationPossible[1]; t5++) {
+				for (let t6 = 0; t6 <= maxAllocationPossible[2]; t6++) {
+					for (let t7 = 0; t7 <= maxAllocationPossible[3]; t7++) {
+						const usedPlayers = 4 * t4 + 5 * t5 + 6 * t6 + 7 * t7;
+						if (usedPlayers <= users.length) {
+							candidates.push([t4, t5, t6, t7]);
+						}
 					}
-				} else {
-					playersSelected = users.splice(0, currentTableSize);
 				}
 			}
 		}
+		if (candidates.length===0) {
+			assignTable(DEFAULT_TABLE, users);
+		}
 
-		if (playersSelected.length < 4) {
-			assignTable(DEFAULT_TABLE, playersSelected);
+		const usedPlayers = (p: number[]): number  =>{
+			return p[0] * 4 + p[1] * 5 + p[2] * 6 + p[3] * 7;
+		}
+
+		const combinationsWithNumberMatchingTotalParticipants = candidates.filter(combination => usedPlayers(combination) === users.length);
+		let bestCombinationPossible: number[] = [];
+		let currentPlayers = users;
+		if (combinationsWithNumberMatchingTotalParticipants.length != 0) {
+			//We find the one that max the number of tables of 4
+			const maxT4 = Math.max(...combinationsWithNumberMatchingTotalParticipants.map(combination => combination[0]));
+			bestCombinationPossible = combinationsWithNumberMatchingTotalParticipants.filter(combination => combination[0] === maxT4)[0];
 		} else {
+			//We try to find the combinations that maxes the number of participants 
+			let secondBestCombinationParticipantNumber = users.length;
+			let secondBestCombinations = [];
+			do {
+				secondBestCombinationParticipantNumber--;
+				secondBestCombinations = candidates.filter(combination => usedPlayers(combination) === secondBestCombinationParticipantNumber);
+			} while(secondBestCombinations.length == 0)
+			//Maximize number of tables of 4
+			const maxT4 = Math.max(...secondBestCombinations.map(combination => combination[0]));
+			bestCombinationPossible = secondBestCombinations.filter(combination => combination[0] === maxT4)[0];
+
+			//Now we assign the players that would be left to Panama...
+			let currentPlayersThatDontTarotOrSeven = currentPlayers.filter((user) => !user.canPlayTarot && !user.canPlayTwoTables);
+			let numberOfPlayersToGoToPanama = currentPlayers.length - secondBestCombinationParticipantNumber;
+			let playersSelected = [];
+			if (currentPlayersThatDontTarotOrSeven.length >= numberOfPlayersToGoToPanama) {
+				playersSelected = currentPlayersThatDontTarotOrSeven.slice(0,numberOfPlayersToGoToPanama);
+			} else {
+				playersSelected = currentPlayers.filter((user) => (!user.canPlayTarot || bestCombinationPossible[1] == 0) && (!user.canPlayTwoTables || bestCombinationPossible[3] == 0)).slice(0,numberOfPlayersToGoToPanama);
+			}
+			assignTable(DEFAULT_TABLE, playersSelected);
+			currentPlayers = currentPlayers.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name));
+		}
+
+		//Tarot is priority
+		while(currentPlayers.length!=0) {
 			var nextTableAvailable = 1;
 			while (tables.get(`Table ${nextTableAvailable}`)) {
 				nextTableAvailable ++;
 			}
+			let playersSelected: User[] = [];
+			// 5 priority for tarot
+			if (bestCombinationPossible[1]!=0) {
+				playersSelected = currentPlayers.filter((user) => user.canPlayTarot).splice(0, 5);
+				bestCombinationPossible[1]--;
+			} else {
+				// 7 priority for users playing two tables
+				if (bestCombinationPossible[3]!=0) {
+					let usersThanCanPlayTwoTables = currentPlayers.filter((user) => user.canPlayTwoTables);
+					playersSelected = [
+						usersThanCanPlayTwoTables[0],
+						...currentPlayers.filter((user) => user.name !== usersThanCanPlayTwoTables[0].name).slice(0, 6),
+					];
+					bestCombinationPossible[3]--;
+				} else {
+					if (bestCombinationPossible[0] !=0) {
+						playersSelected = currentPlayers.splice(0, 4);
+						bestCombinationPossible[0]--;
+					} else {
+						playersSelected = currentPlayers.splice(0, 6);
+						bestCombinationPossible[2]--;
+					}
+				}
+			}
+			var nextTableAvailable = 1;
+			while (tables.get(`Table ${nextTableAvailable}`)) {
+				nextTableAvailable ++;
+			}
+			if (playersSelected.length != 5) {
+				let colorsNeeded = Math.ceil(playersSelected.length /2);
+				for (let index = 0; index < playersSelected.length; index++) {
+					playersSelected[index].teams.push(colors[index%colorsNeeded]);
+				}
+				if (playersSelected.length === 7) {
+					playersSelected[0].teams.push(colors[3]);
+				}
+			}
+			
 			assignTable(`Table ${nextTableAvailable}`, playersSelected);
+			currentPlayers = currentPlayers.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name))
 		}
-
-		this.affectTables(
-			tables,
-			users.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name)),
-		);
 	}
 
 	async adminShuffleTables(): Promise<boolean> {

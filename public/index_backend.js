@@ -118,6 +118,20 @@
 						vm.refreshTables();
 					})
 			};
+			vm.toggleCanPlayTarot = function (username) {
+				$http.get('/admin/users/toggleCanPlayTarot?username=' + encodeURIComponent(username)).
+					then(function () {
+						vm.refreshTables();
+					})
+			};
+
+			vm.toggleCanPlayTwoTables = function (username) {
+				$http.get('/admin/users/toggleCanPlayTwoTables?username=' + encodeURIComponent(username)).
+					then(function () {
+						vm.refreshTables();
+					})
+			};
+			
 
 			vm.tableReady = function (table) {
 				$http.get('/admin/tables/ready?table=' + encodeURIComponent(table)).

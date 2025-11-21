@@ -42,6 +42,7 @@ export class User {
 	canPlayTwoTables: boolean;
 	lastActiveAt: number | undefined;
 	ip: string | undefined;
+	teams: string[];
 
 	constructor(name: string, ip: string | undefined) {
 		this.name = name;
@@ -52,6 +53,7 @@ export class User {
 		this.ready = false;
 		this.canPlayTarot = false;
 		this.canPlayTwoTables = false;
+		this.teams = [];
 	}
 }
 
