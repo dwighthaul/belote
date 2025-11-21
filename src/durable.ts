@@ -351,7 +351,14 @@ export class MyDurableObject extends DurableObject<Env> {
 			bestCombinationPossible = secondBestCombinations.filter(combination => combination[0] === maxT4)[0];
 
 			//Now we assign the players that would be left to Panama...
-			let playersSelected = currentPlayers.filter((user) => (!user.canPlayTarot || bestCombinationPossible[1] == 0) && (!user.canPlayTwoTables || bestCombinationPossible[3] == 0)).slice(0,currentPlayers.length - secondBestCombinationParticipantNumber);
+			let currentPlayersThatDontTarotOrSeven = currentPlayers.filter((user) => !user.canPlayTarot && !user.canPlayTwoTables);
+			let numberOfPlayersToGoToPanama = currentPlayers.length - secondBestCombinationParticipantNumber;
+			let playersSelected = [];
+			if (currentPlayersThatDontTarotOrSeven.length >= numberOfPlayersToGoToPanama) {
+				playersSelected = currentPlayersThatDontTarotOrSeven.slice(0,numberOfPlayersToGoToPanama);
+			} else {
+				playersSelected = currentPlayers.filter((user) => (!user.canPlayTarot || bestCombinationPossible[1] == 0) && (!user.canPlayTwoTables || bestCombinationPossible[3] == 0)).slice(0,numberOfPlayersToGoToPanama);
+			}
 			assignTable(DEFAULT_TABLE, playersSelected);
 			currentPlayers = currentPlayers.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name));
 		}
