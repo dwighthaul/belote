@@ -38,7 +38,7 @@
 					ws.onopen = function () {
 						vm.messages = 'Connected to Meltdown, tables updated';
 						$scope.$applyAsync();
-						vm.refreshTables();
+						// vm.refreshTables();
 					};
 
 					ws.onmessage = function (event) {
@@ -131,7 +131,7 @@
 						vm.refreshTables();
 					})
 			};
-			
+
 
 			vm.tableReady = function (table) {
 				$http.get('/admin/tables/ready?table=' + encodeURIComponent(table)).

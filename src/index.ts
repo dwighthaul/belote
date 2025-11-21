@@ -340,7 +340,7 @@ export default {
 				});
 			}
 			default:
-				return new Response(JSON.stringify({ message: 'not Found' }), { status: 404 });
+				return new Response(JSON.stringify({ message: `url ${url} not found` }), { status: 404 });
 		}
 	},
 } satisfies ExportedHandler<Env>;

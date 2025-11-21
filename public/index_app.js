@@ -122,7 +122,7 @@ angular.module('meltdownApp', [])
 
       ws.onopen = () => {
         vm.message = 'Connected to Meltdown, tables updated';
-        vm.refreshTables();
+        // vm.refreshTables();
       };
 
       ws.onmessage = (event) => {
