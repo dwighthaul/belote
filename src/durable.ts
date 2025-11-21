@@ -10,6 +10,7 @@ import {
 	toggleCanPlayTarot,
 	toggleCanPlayTwoTables,
 	setInactive,
+	setNoTeam,
 } from './user';
 
 type Sessions = Map<WebSocket, { [key: string]: string }>;
@@ -259,12 +260,7 @@ export class MyDurableObject extends DurableObject<Env> {
 		return notReady;
 	}
 
-	async adminGenerateTables(): Promise<boolean> {
-		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
-		if (tables.size == 0) {
-			return false;
-		}
-
+	generateTables(tables: Map<string, Table>) {
 		let panamaTable = tables.get(DEFAULT_TABLE);
 		if (!panamaTable) {
 			panamaTable = new Map();
@@ -283,6 +279,14 @@ export class MyDurableObject extends DurableObject<Env> {
 			user.teams = [];
 		});
 		this.affectTables(tables, users);
+	}
+	async adminGenerateTables(): Promise<boolean> {
+		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
+		if (tables.size == 0) {
+			return false;
+		}
+
+		this.generateTables(tables);
 		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
@@ -435,6 +439,7 @@ export class MyDurableObject extends DurableObject<Env> {
 			}
 			for (const [username, user] of table) {
 				table.delete(username);
+				setNoTeam(user);
 				panamaTable.set(username, user);
 			}
 			tables.delete(tableName);

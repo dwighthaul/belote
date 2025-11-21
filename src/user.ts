@@ -3,10 +3,9 @@ export function setIp(user: User, ip: string | undefined) {
 	user.lastActiveAt = Date.now();
 }
 
-// function setReady(user: User) {
-// 	user.ready = true;
-// 	user.lastActiveAt = Date.now();
-// }
+export function setNoTeam(user: User) {
+	user.teams = [];
+}
 
 export function setNotReady(user: User) {
 	user.ready = false;
@@ -30,6 +29,7 @@ export function toggleCanPlayTarot(user: User): boolean {
 	user.canPlayTarot = !user.canPlayTarot;
 	return user.canPlayTarot;
 }
+
 export function toggleCanPlayTwoTables(user: User): boolean {
 	user.canPlayTwoTables = !user.canPlayTwoTables;
 	return user.canPlayTwoTables;
