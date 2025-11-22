@@ -1,22 +1,20 @@
 import { DurableObject } from 'cloudflare:workers';
-import { replacer, shuffleArray } from './helpers';
+import { replacer } from './helpers';
+import { DEFAULT_TABLE, Table, Tables, generateTables } from './table';
 import {
 	User,
 	UserAndTable,
-	setReadyOrNot,
-	setIp,
 	setActivity,
+	setInactive,
+	setIp,
+	setNoTeam,
 	setNotReady,
+	setReadyOrNot,
 	toggleCanPlayTarot,
 	toggleCanPlayTwoTables,
-	setInactive,
 } from './user';
-import { userInfo } from 'os';
 
 type Sessions = Map<WebSocket, { [key: string]: string }>;
-const DEFAULT_TABLE = 'panama';
-type Table = Map<string, User>;
-type Tables = Map<string, Table>;
 
 export class MyDurableObject extends DurableObject<Env> {
 	sessions: Sessions;
@@ -27,10 +25,6 @@ export class MyDurableObject extends DurableObject<Env> {
 	}
 	async finish(username: string, ip?: string): Promise<number> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
-		if (tables.size == 0) {
-			return 304;
-		}
-
 		let panamaTable = tables.get(DEFAULT_TABLE) || new Map<string, User>();
 		let foundUserTable: UserAndTable | undefined;
 
@@ -262,119 +256,47 @@ export class MyDurableObject extends DurableObject<Env> {
 		}
 		return notReady;
 	}
+
 	async adminGenerateTables(): Promise<boolean> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
 		if (tables.size == 0) {
 			return false;
 		}
 
-		let panamaTable = tables.get(DEFAULT_TABLE);
-		if (!panamaTable) {
-			panamaTable = new Map();
-		}
-
-		let readyUsers: User[] = [];
-		for (const [username, user] of panamaTable) {
-			if (user.ready) {
-				readyUsers.push(user);
-				panamaTable.delete(username);
-			}
-		}
-
-		this.affectTables(tables, shuffleArray(readyUsers), 1);
+		generateTables(tables);
 		await this.ctx.storage.put('tables', tables);
 		return true;
 	}
 
-	affectTables(tables: Tables, users: User[], currentTable: number): void {
-		if (users.length === 0) {
-			return;
-		}
-		var currentTableSize = users.length < 8 ? users.length : (users.length % 4) + 4;
-		const assignTable = function (tableName: string, users: User[]) {
-			let table = tables.get(tableName);
-			if (!table) {
-				table = new Map<string, User>();
-				tables.set(tableName, table);
-			}
-			for (let user of users) {
-				table.set(user.name, user);
-			}
-		};
-		let playersSelected: User[] = [];
-		if (currentTableSize <= 3) {
-			playersSelected = users;
-		} else {
-			if (currentTableSize == 5) {
-				let tarotPlayers = users.filter((user) => user.canPlayTarot);
-				if (tarotPlayers.length >= 5) {
-					playersSelected = tarotPlayers.splice(0, 5);
-				} else {
-					// Le pauvre gars seul qui va aller au panama
-					playersSelected.push(users[users.length - 1]);
-				}
-			} else {
-				if (currentTableSize == 7) {
-					let usersThanCanPlayTwoTables = users.filter((user) => user.canPlayTwoTables);
-					if (usersThanCanPlayTwoTables.length > 0) {
-						playersSelected = [
-							usersThanCanPlayTwoTables[0],
-							...users.filter((user) => user.name !== usersThanCanPlayTwoTables[0].name).slice(0, 6),
-						];
-					} else {
-						// 3 pauvres gars seul qui va aller au panama
-						playersSelected.push(...users.slice(0, 3));
-					}
-				} else {
-					playersSelected = users.splice(0, currentTableSize);
-				}
-			}
-		}
-
-		if (playersSelected.length < 4) {
-			assignTable(DEFAULT_TABLE, playersSelected);
-		} else {
-			assignTable(`Table ${currentTable}`, playersSelected);
-		}
-
-		this.affectTables(
-			tables,
-			users.filter((user) => !playersSelected.find((userSelected) => userSelected.name === user.name)),
-			currentTable + 1
-		);
-	}
-
 	async adminShuffleTables(): Promise<boolean> {
+		// clear all tables
+		if (!(await this.adminClearAllTables())) {
+			return false;
+		}
+
+		// regenerate
+		return await this.adminGenerateTables();
+	}
+	async adminClearAllTables(): Promise<boolean> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
 		if (tables.size == 0) {
 			return false;
 		}
 
-		let panamaTable = tables.get(DEFAULT_TABLE) || new Map<string, User>();
-
-		// move all ready to panama
+		const panamaTable = tables.get(DEFAULT_TABLE) || new Map<string, User>();
 		for (const [tableName, table] of tables) {
 			if (tableName == DEFAULT_TABLE) {
 				continue;
 			}
 			for (const [username, user] of table) {
 				table.delete(username);
+				setNoTeam(user);
 				panamaTable.set(username, user);
 			}
 			tables.delete(tableName);
 		}
 
 		await this.ctx.storage.put('tables', tables);
-
-		// regenerate
-		return await this.adminGenerateTables();
-	}
-	async adminDeleteAllTables(): Promise<boolean> {
-		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
-		if (tables.size == 0) {
-			return false;
-		}
-		await this.ctx.storage.delete('tables');
 		return true;
 	}
 	async adminDeleteTable(tableName: string): Promise<boolean> {
@@ -404,7 +326,22 @@ export class MyDurableObject extends DurableObject<Env> {
 	// no modifying
 	async getTables(): Promise<string> {
 		const tables = (await this.ctx.storage.get<Tables>('tables')) || new Map<string, Table>();
-		let pretty = JSON.stringify(Object.fromEntries(tables), replacer, 2);
+		let entries = Object.fromEntries(tables);
+		entries = Object.keys(entries)
+			.sort((table1, table2) => {
+				if (table1 === DEFAULT_TABLE) {
+					return -1;
+				}
+				if (table2 === DEFAULT_TABLE) {
+					return 1;
+				}
+				return table1.localeCompare(table2);
+			})
+			.reduce((obj, key) => {
+				obj[key] = entries[key];
+				return obj;
+			}, {} as Record<string, (typeof entries)[keyof typeof entries]>);
+		const pretty = JSON.stringify(entries, replacer, 2);
 		return pretty;
 	}
 	async getUsers(): Promise<string> {
@@ -432,8 +369,8 @@ export class MyDurableObject extends DurableObject<Env> {
 			webSocket: client,
 		});
 	}
-	 async clearDo(): Promise<void> {
-	 	await this.ctx.storage.deleteAlarm();
-	 	await this.ctx.storage.deleteAll();
-	 }
+	async clearDo(): Promise<void> {
+		await this.ctx.storage.deleteAlarm();
+		await this.ctx.storage.deleteAll();
+	}
 }

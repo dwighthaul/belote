@@ -3,7 +3,11 @@
 		"wrangler.json": "jsonc"
 	},
 	"[javascript]": {
+<<<<<<< HEAD
 		"editor.defaultFormatter": "esbenp.prettier-vscode",
+=======
+		"editor.defaultFormatter": "vscode.typescript-language-features",
+>>>>>>> origin_adrien/main
 		"editor.codeActionsOnSave": {
 			"source.organizeImports": "always",
 			"source.sortImports": "explicit",
@@ -16,7 +20,11 @@
 		"editor.suggest.insertMode": "replace"
 	},
 	"[css]": {
+<<<<<<< HEAD
 	    "editor.defaultFormatter": "vscode.css-language-features",
+=======
+	    "editor.defaultFormatter": "vscode.css-language-features", // Use built-in CSS formatter
+>>>>>>> origin_adrien/main
 	    "editor.formatOnSave": true,
 		"editor.codeActionsOnSave": {
 		}

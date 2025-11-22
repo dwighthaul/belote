@@ -1,3 +1,5 @@
+import { Env } from './index';
+
 export async function authenticate(request: Request, env: Env, operation: () => Promise<Response>): Promise<Response> {
 	if (env.AUTHENTICATION == 'false') {
 		return await operation();

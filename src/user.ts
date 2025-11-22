@@ -3,10 +3,9 @@ export function setIp(user: User, ip: string | undefined) {
 	user.lastActiveAt = Date.now();
 }
 
-// function setReady(user: User) {
-// 	user.ready = true;
-// 	user.lastActiveAt = Date.now();
-// }
+export function setNoTeam(user: User) {
+	user.teams = [];
+}
 
 export function setNotReady(user: User) {
 	user.ready = false;
@@ -30,9 +29,38 @@ export function toggleCanPlayTarot(user: User): boolean {
 	user.canPlayTarot = !user.canPlayTarot;
 	return user.canPlayTarot;
 }
+
 export function toggleCanPlayTwoTables(user: User): boolean {
 	user.canPlayTwoTables = !user.canPlayTwoTables;
 	return user.canPlayTwoTables;
+}
+
+export function readyPlayer(name: string): User {
+	const user = new User(name, undefined);
+	user.ready = true;
+	return user;
+}
+
+export function readyPlayerTarot(name: string): User {
+	const user = new User(name, undefined);
+	user.ready = true;
+	user.canPlayTarot = true;
+	return user;
+}
+
+export function readyPlayerTwoTables(name: string): User {
+	const user = new User(name, undefined);
+	user.ready = true;
+	user.canPlayTwoTables = true;
+	return user;
+}
+
+export function readyPlayerTarotAndTwoTables(name: string): User {
+	const user = new User(name, undefined);
+	user.ready = true;
+	user.canPlayTarot = true;
+	user.canPlayTwoTables = true;
+	return user;
 }
 
 export class User {
@@ -42,6 +70,7 @@ export class User {
 	canPlayTwoTables: boolean;
 	lastActiveAt: number | undefined;
 	ip: string | undefined;
+	teams: string[];
 
 	constructor(name: string, ip: string | undefined) {
 		this.name = name;
@@ -52,6 +81,7 @@ export class User {
 		this.ready = false;
 		this.canPlayTarot = false;
 		this.canPlayTwoTables = false;
+		this.teams = [];
 	}
 }
 

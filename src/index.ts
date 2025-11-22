@@ -25,7 +25,10 @@ export default {
 		const internalError = new Response(JSON.stringify({ message: `internal error` }), { status: 500 });
 		const unauthorizedError = new Response(JSON.stringify({ message: `unauthorized` }), { status: 401 });
 		const missingUsername = new Response(JSON.stringify({ message: 'missing username' }), { status: 400 });
+<<<<<<< HEAD
 		const unchanged = new Response(null, { status: 304 });
+=======
+>>>>>>> origin_adrien/main
 		const ip = request.headers.get(IP_HEADER) || 'unknown';
 		const username = url.searchParams.get('username');
 		const userReady = (username: string): string => {
@@ -34,6 +37,15 @@ export default {
 			}
 			return 'user ready!';
 		};
+<<<<<<< HEAD
+=======
+		const userNotReady = (username: string): string => {
+			if (username) {
+				return `🎉 user ${username} not ready!`;
+			}
+			return 'user not ready!';
+		};
+>>>>>>> origin_adrien/main
 
 		const stub = env.MY_DURABLE_OBJECT.getByName('belote');
 		if (!stub) {
@@ -55,6 +67,18 @@ export default {
 					await stub.notifyAll(userReady(username));
 				}
 				return new Response(JSON.stringify({ message: `🎉 User ready!` }), success);
+<<<<<<< HEAD
+=======
+			}
+			case '/me/notready': {
+				if (!username) {
+					return missingUsername;
+				}
+				if (await stub.setUserReadyOrNot(username, false, ip)) {
+					await stub.notifyAll(userNotReady(username));
+				}
+				return new Response(JSON.stringify({ message: `🎉 User not ready!` }), success);
+>>>>>>> origin_adrien/main
 			}
 			case '/me/toggleCanPlayTwoTables': {
 				if (!username) {
@@ -63,7 +87,7 @@ export default {
 				if (await stub.toggleCanPlayTwoTables(username, ip)) {
 					await stub.notifyAll(`user ${username} toggleCanPlayTwoTables!`);
 				}
-				return new Response('🎉 User ready!', success);
+				return new Response(JSON.stringify({ message: `🎉 User can play on 2 tables!` }), success);
 			}
 			case '/me/toggleCanPlayTarot': {
 				if (!username) {
@@ -72,7 +96,7 @@ export default {
 				if (await stub.toggleCanPlayTarot(username, ip)) {
 					await stub.notifyAll(`user ${username} toggleCanPlayTarot!`);
 				}
-				return new Response('🎉 User ready!', success);
+				return new Response(JSON.stringify({ message: `🎉 User can play tarot !` }), success);
 			}
 			case '/me/join': {
 				if (!username) {
@@ -81,9 +105,13 @@ export default {
 				const join = await stub.join(username, ip);
 				if (join) {
 					await stub.notifyAll(`user ${username} joined the Meltdown`);
+<<<<<<< HEAD
 					return new Response(JSON.stringify({ message: `🎉 User ${username} joined!` }), success);
+=======
+					return new Response(JSON.stringify({ message: `🎉 New user ${username} joined!` }), success);
+>>>>>>> origin_adrien/main
 				}
-				return unchanged;
+				return new Response(JSON.stringify({ message: `🎉 User ${username} already existed!` }), success);
 			}
 			case '/me/meltdown': {
 				if (!username) {
@@ -115,8 +143,11 @@ export default {
 						return unauthorizedError;
 					case 404:
 						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
+<<<<<<< HEAD
 					case 304:
 						return unchanged;
+=======
+>>>>>>> origin_adrien/main
 					case 200:
 						await stub.notifyAll(`user ${username} and its friends at the same table finished their game`);
 						return new Response(JSON.stringify({ message: `🎉 User ${username} moved!` }), success);
@@ -136,7 +167,7 @@ export default {
 						await stub.notifyAll(`user ${username} joined`);
 						return new Response(JSON.stringify({ message: `🎉 User ${username} joined!` }), success);
 					}
-					return unchanged;
+					return new Response(JSON.stringify({ message: `🎉 User ${username} already existed!` }), success);
 				});
 			}
 			case '/admin/users/toggleCanPlayTarot': {
@@ -147,9 +178,9 @@ export default {
 					const found = await stub.toggleCanPlayTarot(username);
 					if (found) {
 						await stub.notifyAll(`user ${username} toggleCanPlayTarot!`);
-						return new Response(`🎉 User ${username} toggleCanPlayTarot!`, success);
+						return new Response(JSON.stringify({ message: `🎉 User ${username} toggleCanPlayTarot!` }), success);
 					} else {
-						return new Response(`User ${username} not found`, { status: 404 });
+						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
 					}
 				});
 			}
@@ -161,9 +192,9 @@ export default {
 					const found = await stub.toggleCanPlayTwoTables(username);
 					if (found) {
 						await stub.notifyAll(`user ${username} toggleCanPlayTwoTables!`);
-						return new Response(`🎉 User ${username} toggleCanPlayTwoTables!`, success);
+						return new Response(JSON.stringify({ message: `🎉 User ${username} toggleCanPlayTwoTables!` }), success);
 					} else {
-						return new Response(`User ${username} not found`, { status: 404 });
+						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
 					}
 				});
 			}
@@ -172,8 +203,13 @@ export default {
 					if (!username) {
 						return missingUsername;
 					}
+<<<<<<< HEAD
 					const found = await stub.setUserReadyOrNot(username, true, undefined);
 					if (found) {
+=======
+					const ready = await stub.setUserReadyOrNot(username, true, undefined);
+					if (ready) {
+>>>>>>> origin_adrien/main
 						await stub.notifyAll(userReady(username));
 						return new Response(JSON.stringify({ message: userReady(username) }), success);
 					} else {
@@ -189,6 +225,7 @@ export default {
 					}
 					const ready = await stub.setUserReadyOrNot(username, false, undefined);
 					if (ready) {
+<<<<<<< HEAD
 						await stub.notifyAll(`user ${username} NOT ready`);
 						return new Response(JSON.stringify({ message: `🎉 User ${username} NOT ready!` }), success);
 					} else {
@@ -207,6 +244,12 @@ export default {
 						return new Response(`🎉 User ${username} set inactive!`, success);
 					} else {
 						return new Response(`User ${username} not found`, { status: 404 });
+=======
+						await stub.notifyAll(userNotReady(username));
+						return new Response(JSON.stringify({ message: userNotReady(username) }), success);
+					} else {
+						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
+>>>>>>> origin_adrien/main
 					}
 				});
 			}
@@ -233,8 +276,6 @@ export default {
 					switch (code) {
 						case 404:
 							return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
-						case 304:
-							return unchanged;
 						case 200:
 							await stub.notifyAll(`user ${username} finished its game`);
 							return new Response(JSON.stringify({ message: `🎉 User ${username} finished its game!` }), success);
@@ -276,7 +317,7 @@ export default {
 					console.log(table);
 					const deleted = await stub.adminDeleteTable(table);
 					if (!deleted) {
-						return unchanged;
+						return new Response(JSON.stringify({ message: `table was NOT deleted!` }), success);
 					}
 					await stub.notifyAll('table deleted');
 					return new Response(JSON.stringify({ message: `🎉 table deleted!` }), success);
@@ -291,7 +332,7 @@ export default {
 					console.log(table);
 					const notReady = await stub.adminTableNotReady(table);
 					if (!notReady) {
-						return unchanged;
+						return new Response(JSON.stringify({ message: `table WAS NOT ready!` }), success);
 					}
 					await stub.notifyAll('table not ready');
 					return new Response(JSON.stringify({ message: `🎉 table not ready!` }), success);
@@ -306,7 +347,7 @@ export default {
 					console.log(table);
 					const ready = await stub.adminTableReady(table);
 					if (!ready) {
-						return unchanged;
+						return new Response(JSON.stringify({ message: `table WAS ready!` }), success);
 					}
 					await stub.notifyAll('table ready');
 					return new Response(JSON.stringify({ message: `🎉 table ready!` }), success);
@@ -314,7 +355,7 @@ export default {
 			}
 			case '/admin/tables/clear': {
 				return authenticate(request, env, async () => {
-					if (await stub.adminDeleteAllTables()) {
+					if (await stub.adminClearAllTables()) {
 						await stub.notifyAll(`tables cleared`);
 					}
 					return new Response(JSON.stringify({ message: `🎉 Tables cleared` }), success);
@@ -331,9 +372,9 @@ export default {
 			case '/admin/tables/shuffle': {
 				return authenticate(request, env, async () => {
 					if (await stub.adminShuffleTables()) {
-						await stub.notifyAll(`tables shuffled`);
+						await stub.notifyAll(`tables reshuffled`);
 					}
-					return new Response('🎉 Tables shuffled', success);
+					return new Response(JSON.stringify({ message: `🎉 New tables reshuffled` }), success);
 				});
 			}
 			case '/admin/meltdown': {
@@ -343,6 +384,7 @@ export default {
 					return response;
 				});
 			}
+<<<<<<< HEAD
 			// case '/admin/storage/delete': {
 			// 	return authenticate(request, env, async () => {
 			// 		await stub.clearDo();
@@ -352,6 +394,10 @@ export default {
 			// }
 			default:
 				return new Response(JSON.stringify({ message: 'not Found' }), { status: 404 });
+=======
+			default:
+				return new Response(JSON.stringify({ message: `url ${url} not found` }), { status: 404 });
+>>>>>>> origin_adrien/main
 		}
 	},
 } satisfies ExportedHandler<Env>;

@@ -59,6 +59,36 @@ angular.module('meltdownApp', [])
       });
     };
 
+    vm.notready = function () {
+      $http.get('/me/notready?username=' + encodeURIComponent(vm.username)).then((response) => {
+        if (response.status === 404) {
+          vm.quit();
+        } else {
+          vm.refreshTables();
+        }
+      });
+    };
+
+    vm.toggleCanPlayTarot = function () {
+      $http.get('/me/toggleCanPlayTarot?username=' + encodeURIComponent(vm.username)).then((response) => {
+        if (response.status === 404) {
+          vm.quit();
+        } else {
+          vm.refreshTables();
+        }
+      });
+    };
+
+    vm.toggleCanPlayTwoTables = function () {
+      $http.get('/me/toggleCanPlayTwoTables?username=' + encodeURIComponent(vm.username)).then((response) => {
+        if (response.status === 404) {
+          vm.quit();
+        } else {
+          vm.refreshTables();
+        }
+      });
+    };
+
     vm.refreshTables = function () {
       $http.get('/public/tables').then((resp) => {
         const tablesData = resp.data;
@@ -66,7 +96,9 @@ angular.module('meltdownApp', [])
           const usersList = Object.values(users).map(user => ({
             name: user.name,
             ready: user.ready,
-            ip: user.ip
+            canPlayTarot: user.canPlayTarot,
+            canPlayTwoTables: user.canPlayTwoTables,
+            teams: user.teams
           }));
           const readyCount = usersList.filter(u => u.ready).length;
           return { name, users: usersList, readyCount };
@@ -79,6 +111,7 @@ angular.module('meltdownApp', [])
         if (!found) {
           vm.connected = false;
           vm.joinDisabled = false;
+          localStorage.removeItem('username');
         }
       });
     };
@@ -89,7 +122,7 @@ angular.module('meltdownApp', [])
 
       ws.onopen = () => {
         vm.message = 'Connected to Meltdown, tables updated';
-        vm.refreshTables();
+        // vm.refreshTables();
       };
 
       ws.onmessage = (event) => {

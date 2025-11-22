@@ -1,6 +1,18 @@
-- user capacity : 
-    - belote
-    - coinche
-    - tarot
-    - preference table a 4 vs 6
-    - joueur sur 2 tables (table de 7)
+- unit test for table generation algo
+
+1 -> not possible
+2 -> not possible
+3 -> not possible
+
+4 -> 1x4
+5 -> needs 5x tarot
+6 -> 1x6
+7 -> needs 1 player TwoTables
+
+8 -> 2x4
+9 -> 1x4 + needs 5x tarot
+10 -> 1x4 + 1x6
+11 -> 1x4 + 1x7 if 1 player on TwoTables OR 1x6 + 5x tarot
+
+12 -> 3x4
+...etc
