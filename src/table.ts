@@ -70,7 +70,7 @@ export function affectTables(tables: Tables, users: User[]): void {
 
 	const combinationsWithNumberMatchingTotalParticipants = candidates.filter((combination) => usedPlayers(combination) === users.length);
 	let bestCombinationPossible: number[] = [];
-	let currentPlayers = users;
+	let currentPlayers = [...users];
 	if (combinationsWithNumberMatchingTotalParticipants.length != 0) {
 		//We find the one that max the number of tables of 4
 		const maxT4 = Math.max(...combinationsWithNumberMatchingTotalParticipants.map((combination) => combination[0]));
