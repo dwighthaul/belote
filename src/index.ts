@@ -25,10 +25,6 @@ export default {
 		const internalError = new Response(JSON.stringify({ message: `internal error` }), { status: 500 });
 		const unauthorizedError = new Response(JSON.stringify({ message: `unauthorized` }), { status: 401 });
 		const missingUsername = new Response(JSON.stringify({ message: 'missing username' }), { status: 400 });
-<<<<<<< HEAD
-		const unchanged = new Response(null, { status: 304 });
-=======
->>>>>>> origin_adrien/main
 		const ip = request.headers.get(IP_HEADER) || 'unknown';
 		const username = url.searchParams.get('username');
 		const userReady = (username: string): string => {
@@ -37,15 +33,12 @@ export default {
 			}
 			return 'user ready!';
 		};
-<<<<<<< HEAD
-=======
 		const userNotReady = (username: string): string => {
 			if (username) {
 				return `🎉 user ${username} not ready!`;
 			}
 			return 'user not ready!';
 		};
->>>>>>> origin_adrien/main
 
 		const stub = env.MY_DURABLE_OBJECT.getByName('belote');
 		if (!stub) {
@@ -67,8 +60,6 @@ export default {
 					await stub.notifyAll(userReady(username));
 				}
 				return new Response(JSON.stringify({ message: `🎉 User ready!` }), success);
-<<<<<<< HEAD
-=======
 			}
 			case '/me/notready': {
 				if (!username) {
@@ -78,7 +69,6 @@ export default {
 					await stub.notifyAll(userNotReady(username));
 				}
 				return new Response(JSON.stringify({ message: `🎉 User not ready!` }), success);
->>>>>>> origin_adrien/main
 			}
 			case '/me/toggleCanPlayTwoTables': {
 				if (!username) {
@@ -105,11 +95,7 @@ export default {
 				const join = await stub.join(username, ip);
 				if (join) {
 					await stub.notifyAll(`user ${username} joined the Meltdown`);
-<<<<<<< HEAD
-					return new Response(JSON.stringify({ message: `🎉 User ${username} joined!` }), success);
-=======
 					return new Response(JSON.stringify({ message: `🎉 New user ${username} joined!` }), success);
->>>>>>> origin_adrien/main
 				}
 				return new Response(JSON.stringify({ message: `🎉 User ${username} already existed!` }), success);
 			}
@@ -143,11 +129,6 @@ export default {
 						return unauthorizedError;
 					case 404:
 						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
-<<<<<<< HEAD
-					case 304:
-						return unchanged;
-=======
->>>>>>> origin_adrien/main
 					case 200:
 						await stub.notifyAll(`user ${username} and its friends at the same table finished their game`);
 						return new Response(JSON.stringify({ message: `🎉 User ${username} moved!` }), success);
@@ -203,13 +184,8 @@ export default {
 					if (!username) {
 						return missingUsername;
 					}
-<<<<<<< HEAD
-					const found = await stub.setUserReadyOrNot(username, true, undefined);
-					if (found) {
-=======
 					const ready = await stub.setUserReadyOrNot(username, true, undefined);
 					if (ready) {
->>>>>>> origin_adrien/main
 						await stub.notifyAll(userReady(username));
 						return new Response(JSON.stringify({ message: userReady(username) }), success);
 					} else {
@@ -225,31 +201,10 @@ export default {
 					}
 					const ready = await stub.setUserReadyOrNot(username, false, undefined);
 					if (ready) {
-<<<<<<< HEAD
-						await stub.notifyAll(`user ${username} NOT ready`);
-						return new Response(JSON.stringify({ message: `🎉 User ${username} NOT ready!` }), success);
-					} else {
-						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
-					}
-				});
-			}
-			case '/admin/users/inactive': {
-				return authenticate(request, env, async () => {
-					if (!username) {
-						return missingUsername;
-					}
-					const inactive = await stub.adminSetUserInactive(username);
-					if (inactive) {
-						await stub.notifyAll(`user ${username} set inactive`);
-						return new Response(`🎉 User ${username} set inactive!`, success);
-					} else {
-						return new Response(`User ${username} not found`, { status: 404 });
-=======
 						await stub.notifyAll(userNotReady(username));
 						return new Response(JSON.stringify({ message: userNotReady(username) }), success);
 					} else {
 						return new Response(JSON.stringify({ message: `User ${username} not found` }), { status: 404 });
->>>>>>> origin_adrien/main
 					}
 				});
 			}
@@ -384,20 +339,8 @@ export default {
 					return response;
 				});
 			}
-<<<<<<< HEAD
-			// case '/admin/storage/delete': {
-			// 	return authenticate(request, env, async () => {
-			// 		await stub.clearDo();
-			// 		await stub.notifyAll('users deleted');
-			// 		return new Response(JSON.stringify({ message: `🎉 All users cleared!` }), success);
-			// 	});
-			// }
-			default:
-				return new Response(JSON.stringify({ message: 'not Found' }), { status: 404 });
-=======
 			default:
 				return new Response(JSON.stringify({ message: `url ${url} not found` }), { status: 404 });
->>>>>>> origin_adrien/main
 		}
 	},
 } satisfies ExportedHandler<Env>;
